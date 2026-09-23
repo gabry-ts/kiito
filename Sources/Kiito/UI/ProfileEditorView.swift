@@ -85,12 +85,10 @@ struct ProfileEditorView: View {
         }
         .formStyle(.grouped)
         .navigationTitle(profile.name)
+        .navigationSubtitle(profile.id == store.activeProfileID ? "Active Profile" : "")
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                if profile.id == store.activeProfileID {
-                    Label("Active", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.tint)
-                } else {
+            if profile.id != store.activeProfileID {
+                ToolbarItem(placement: .primaryAction) {
                     Button("Use This Profile") { store.select(profile.id) }
                 }
             }
