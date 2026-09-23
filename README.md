@@ -14,8 +14,8 @@
 [![Latest release](https://img.shields.io/github/v/release/gabry-ts/kiito)](https://github.com/gabry-ts/kiito/releases)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/settings-dark.png">
-  <img src="docs/screenshots/settings-light.png" alt="Kiito settings window with profiles and scroll tuning" width="880">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/profile-dark.png">
+  <img src="docs/screenshots/profile-light.png" alt="Kiito profile editor with scroll tuning and cursor styles" width="720">
 </picture>
 
 </div>
@@ -42,38 +42,11 @@ Trackballs like the Logitech MX Ergo are great pointing devices, but scrolling o
 
 ## Screenshots
 
-<table>
-<tr>
-<td width="50%" align="center">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/profile-dark.png">
-  <img src="docs/screenshots/profile-light.png" alt="Profile editor with speed, acceleration and inertia controls">
-</picture>
-<br><sub>Profile editor</sub>
-</td>
-<td width="50%" align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/excluded-apps-dark.png">
-  <img src="docs/screenshots/excluded-apps-light.png" alt="Excluded apps list">
+  <img src="docs/screenshots/excluded-apps-light.png" alt="Excluded apps list" width="880">
 </picture>
-<br><sub>Excluded apps</sub>
-</td>
-</tr>
-</table>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/settings-dark.png">
-  <img src="docs/screenshots/settings-light.png" alt="Kiito settings window" width="880">
-</picture>
-<p align="center"><sub>Settings window</sub></p>
-
-<!--
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/menu-dark.png">
-  <img src="docs/screenshots/menu-light.png" alt="Kiito menu bar item with profile picker" width="360">
-</picture>
-<p align="center"><sub>Menu bar item</sub></p>
--->
+<p align="center"><sub>Excluded apps</sub></p>
 
 ## Requirements
 
