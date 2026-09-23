@@ -13,12 +13,10 @@
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
 [![Latest release](https://img.shields.io/github/v/release/gabry-ts/kiito)](https://github.com/gabry-ts/kiito/releases)
 
-<!--
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/settings-dark.png">
   <img src="docs/screenshots/settings-light.png" alt="Kiito settings window with profiles and scroll tuning" width="880">
 </picture>
--->
 
 </div>
 
@@ -43,9 +41,6 @@ Trackballs like the Logitech MX Ergo are great pointing devices, but scrolling o
 | **Menu bar** | Hideable menu bar icon (relaunch Kiito from Spotlight or Finder to bring settings back), launch at login, and a quick enable/disable toggle. |
 
 ## Screenshots
-
-<!--
-TODO: capture these once the app can be launched interactively, then uncomment.
 
 <table>
 <tr>
@@ -72,6 +67,7 @@ TODO: capture these once the app can be launched interactively, then uncomment.
 </picture>
 <p align="center"><sub>Settings window</sub></p>
 
+<!--
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/menu-dark.png">
   <img src="docs/screenshots/menu-light.png" alt="Kiito menu bar item with profile picker" width="360">
