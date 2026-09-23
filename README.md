@@ -6,8 +6,6 @@
 
 **Hold a mouse button and move a trackball to scroll. Free and open source. The cursor stays put.**
 
-<sub>"Kiito" is Finnish for a swift dash, from *kiitää*, to speed along. Roll the ball and the page takes off.</sub>
-
 [![macOS 26+](https://img.shields.io/badge/macOS-26%2B-black?logo=apple)](#install)
 [![Swift 6.2](https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white)](Package.swift)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
