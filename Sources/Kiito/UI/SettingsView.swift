@@ -157,6 +157,12 @@ private struct GeneralView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("General")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Quit Kiito", systemImage: "power") { NSApp.terminate(nil) }
+                    .help("Quit Kiito")
+            }
+        }
         .onAppear {
             isAccessibilityTrusted = Permissions.isTrusted
             loginItemStatus = LoginItem.status
