@@ -88,7 +88,7 @@ open build/Kiito.app
 ## Privacy
 
 - Settings stay on your Mac, in a local JSON file you can inspect or delete at any time.
-- Kiito reads mouse events and the frontmost app's bundle identifier, to apply per-app exclusions. It doesn't read keystrokes or window content.
+- Kiito reads mouse events and the bundle identifier of the app under the cursor, to apply per-app exclusions. It doesn't read keystrokes or window content.
 - No network access, no analytics, no account, no server.
 
 ## Notes
