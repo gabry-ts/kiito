@@ -48,6 +48,7 @@ final class ScrollEngine {
     private var gestureBegan = false
     private var velocity = VelocityTracker()
     private let source = CGEventSource(stateID: .combinedSessionState)
+    private let overlay = CursorOverlay()
 
     private lazy var momentum = Momentum { [unowned self] delta, phase in
         self.postScroll(dx: delta.dx, dy: delta.dy, scrollPhase: .none, momentumPhase: phase)
@@ -182,6 +183,7 @@ final class ScrollEngine {
                 travel = .zero
                 lastMoveTime = CACurrentMediaTime()
                 state = .latched
+                overlay.show(style: settings.cursorStyle, at: anchor)
             } else {
                 state = .idle
                 unfreezeCursor()
@@ -244,6 +246,7 @@ final class ScrollEngine {
         if state == .armed {
             if hypot(travel.dx, travel.dy) > settings.threshold {
                 state = .scrolling
+                overlay.show(style: settings.cursorStyle, at: anchor)
             }
             return false
         }
@@ -306,6 +309,7 @@ final class ScrollEngine {
     }
 
     private func unfreezeCursor() {
+        overlay.hide()
         guard cursorFrozen else { return }
         CGAssociateMouseAndMouseCursorPosition(1)
         cursorFrozen = false
