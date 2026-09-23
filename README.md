@@ -11,7 +11,7 @@
 [![macOS 26+](https://img.shields.io/badge/macOS-26%2B-black?logo=apple)](#install)
 [![Swift 6.2](https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white)](Package.swift)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
-[![Latest release](https://img.shields.io/github/v/release/gabry-ts/Kiito)](https://github.com/gabry-ts/Kiito/releases)
+[![Latest release](https://img.shields.io/github/v/release/gabry-ts/kiito)](https://github.com/gabry-ts/kiito/releases)
 
 <!--
 <picture>
@@ -87,7 +87,7 @@ TODO: capture these once the app can be launched interactively, then uncomment.
 
 ## Install
 
-1. Download the latest `Kiito-<version>.dmg` from [Releases](https://github.com/gabry-ts/Kiito/releases) and drag the app to Applications. Kiito uses `SMAppService` for "launch at login", which only works reliably when the app lives in `/Applications`.
+1. Download the latest `Kiito-<version>.dmg` from [Releases](https://github.com/gabry-ts/kiito/releases) and drag the app to Applications. Kiito uses `SMAppService` for "launch at login", which only works reliably when the app lives in `/Applications`.
 2. The app is signed with a local Apple Development identity and **not notarized**, so Gatekeeper blocks the first launch. Open it once, then go to **System Settings > Privacy & Security** and click **Open Anyway** (on older macOS versions, right-click the app > Open also works).
 3. Launch Kiito. On first launch it asks for Accessibility permission; grant it in **System Settings > Privacy & Security > Accessibility** and the settings window opens automatically.
 4. If a rebuild or reinstall ever invalidates the Accessibility grant, remove and re-add Kiito in that same Accessibility list.
