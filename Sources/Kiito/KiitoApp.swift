@@ -17,9 +17,12 @@ struct KiitoApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let engine = ScrollEngine()
+    let store = SettingsStore()
     private let permissions = Permissions()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        store.attach(engine: engine)
+
         if !Permissions.isTrusted {
             Permissions.requestAccess()
         }
