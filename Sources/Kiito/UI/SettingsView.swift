@@ -117,14 +117,14 @@ private struct GeneralView: View {
     var body: some View {
         @Bindable var store = store
         Form {
-            Section {
+            Section("Kiito") {
                 Toggle("Enabled", isOn: $store.isEnabled)
                 Toggle("Show Icon in Menu Bar", isOn: $store.showMenuBarIcon)
                 Text("Relaunch Kiito from Spotlight or Finder to reopen settings when hidden.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Section {
+            Section("Startup") {
                 Toggle("Launch at Login", isOn: launchAtLoginBinding)
                 if loginItemStatus == .requiresApproval {
                     HStack {
@@ -152,12 +152,17 @@ private struct GeneralView: View {
                     }
                 }
             }
-            Section {
+            Section("About") {
                 LabeledContent("Version", value: versionString)
             }
         }
         .formStyle(.grouped)
         .navigationTitle("General")
+        .toolbar {
+            // Keeps the window's unified toolbar attached so the title renders
+            // with the same bold style as the other panes.
+            ToolbarItem(placement: .primaryAction) { EmptyView() }
+        }
         .onAppear {
             isAccessibilityTrusted = Permissions.isTrusted
             loginItemStatus = LoginItem.status

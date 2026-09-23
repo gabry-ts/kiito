@@ -3,44 +3,31 @@ import UniformTypeIdentifiers
 
 struct ExcludedAppsView: View {
     @Environment(SettingsStore.self) private var store
-    @State private var selection: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if store.excludedBundleIDs.isEmpty {
-                ContentUnavailableView(
-                    "No Excluded Apps",
-                    systemImage: "xmark.app",
-                    description: Text("Apps added here keep their normal right click; Kiito won't respond to the trigger button.")
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List(store.excludedBundleIDs, id: \.self, selection: $selection) { bundleID in
-                    row(for: bundleID)
-                }
-            }
-            Divider()
-            HStack(spacing: 8) {
-                Button {
-                    addApp()
-                } label: {
-                    Image(systemName: "plus")
-                }
-                Button {
-                    if let selection {
-                        store.removeExcludedApp(selection)
-                        self.selection = nil
+        Form {
+            Section {
+                if store.excludedBundleIDs.isEmpty {
+                    Text("No excluded apps")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(store.excludedBundleIDs, id: \.self) { bundleID in
+                        row(for: bundleID)
                     }
-                } label: {
-                    Image(systemName: "minus")
                 }
-                .disabled(selection == nil)
-                Spacer()
+            } header: {
+                Text("Excluded Apps")
+            } footer: {
+                Text("Apps added here keep their normal right click; Kiito won't respond to the trigger button.")
             }
-            .buttonStyle(.borderless)
-            .padding(8)
         }
+        .formStyle(.grouped)
         .navigationTitle("Excluded Apps")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Add App…") { addApp() }
+            }
+        }
     }
 
     private func row(for bundleID: String) -> some View {
@@ -48,15 +35,23 @@ struct ExcludedAppsView: View {
             if let icon = icon(for: bundleID) {
                 Image(nsImage: icon)
                     .resizable()
-                    .frame(width: 24, height: 24)
+                    .frame(width: 20, height: 20)
             }
             Text(name(for: bundleID))
             Spacer()
-            Text(bundleID)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Button {
+                store.removeExcludedApp(bundleID)
+            } label: {
+                Image(systemName: "minus.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
         }
-        .tag(bundleID)
+        .contextMenu {
+            Button("Remove", role: .destructive) {
+                store.removeExcludedApp(bundleID)
+            }
+        }
     }
 
     private func icon(for bundleID: String) -> NSImage? {
