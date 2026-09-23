@@ -6,11 +6,31 @@ struct KiitoApp: App {
 
     var body: some Scene {
         MenuBarExtra("Kiito", systemImage: "circle.circle") {
+            SettingsMenuButton()
+            Divider()
             Button("Quit Kiito") {
                 NSApplication.shared.terminate(nil)
             }
             .keyboardShortcut("q")
         }
+        Window("Kiito", id: "settings") {
+            SettingsView()
+                .environment(appDelegate.store)
+        }
+        .windowResizability(.contentSize)
+        .defaultSize(width: 820, height: 600)
+    }
+}
+
+private struct SettingsMenuButton: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("Settings…") {
+            NSApp.activate()
+            openWindow(id: "settings")
+        }
+        .keyboardShortcut(",")
     }
 }
 

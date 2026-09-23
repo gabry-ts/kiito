@@ -81,6 +81,20 @@ final class CursorOverlay {
 
     // MARK: - Images
 
+    /// Preview image for a cursor style, for use in settings UI.
+    static func previewImage(for style: CursorStyle) -> NSImage? {
+        switch style {
+        case .none:
+            return nil
+        case .closedHand:
+            return NSCursor.closedHand.image
+        case .systemMove:
+            return (systemMoveCursor() ?? circleCursor()).image
+        case .smoozeCircle:
+            return circleCursor().image
+        }
+    }
+
     private func image(for style: CursorStyle) -> CursorImage? {
         if let cached = images[style] { return cached }
         let cursor: CursorImage?
