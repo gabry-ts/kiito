@@ -25,7 +25,8 @@ struct ExcludedAppsView: View {
         .navigationTitle("Excluded Apps")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Add App…") { addApp() }
+                Button("Add App", systemImage: "plus") { addApp() }
+                    .help("Add App")
             }
         }
     }
