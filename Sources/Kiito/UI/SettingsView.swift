@@ -39,7 +39,6 @@ struct SettingsView: View {
         } detail: {
             detailView
         }
-        .navigationTitle("Kiito")
         .frame(minWidth: 720, minHeight: 520)
         .alert("Rename Profile", isPresented: renameBinding) {
             TextField("Name", text: $renameText)
@@ -158,11 +157,6 @@ private struct GeneralView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("General")
-        .toolbar {
-            // Keeps the window's unified toolbar attached so the title renders
-            // with the same bold style as the other panes.
-            ToolbarItem(placement: .primaryAction) { EmptyView() }
-        }
         .onAppear {
             isAccessibilityTrusted = Permissions.isTrusted
             loginItemStatus = LoginItem.status
