@@ -26,6 +26,15 @@ enum CursorStyle: String, Codable, CaseIterable, Sendable {
     case none
 }
 
+enum AxisMode: String, Codable, CaseIterable, Sendable {
+    /// Both axes at once, following every direction change.
+    case free
+    /// One axis at a time, switching mid-gesture when the other clearly dominates.
+    case snap
+    /// The axis picked at the start of the gesture holds until release.
+    case initial
+}
+
 struct ScrollSettings: Codable, Equatable, Sendable {
     var trigger: TriggerButton = .right
     /// Ball travel in points before a press turns into a scroll instead of a click.
@@ -33,7 +42,9 @@ struct ScrollSettings: Codable, Equatable, Sendable {
     /// Multiplier from ball travel to scrolled pixels.
     var speed: Double = 2.3
     var acceleration: Bool = false
-    var axisLock: Bool = true
+    var axisMode: AxisMode = .snap
+    /// 0...1, how readily Snap switches axis: higher needs less dominance and less sustained movement.
+    var snapSensitivity: Double = 0.5
     var inertia: Bool = true
     /// 0...300, mapped to the momentum decay time.
     var throwDuration: Double = 100
@@ -43,6 +54,11 @@ struct ScrollSettings: Codable, Equatable, Sendable {
     var cursorStyle: CursorStyle = .dot
 
     static let throwDurationRange: ClosedRange<Double> = 0...300
+
+    /// Keys from older builds, read only to migrate stored settings.
+    private enum LegacyCodingKeys: String, CodingKey {
+        case axisLock
+    }
 
     init() {}
 
@@ -54,7 +70,15 @@ struct ScrollSettings: Codable, Equatable, Sendable {
         threshold = try c.decodeIfPresent(Double.self, forKey: .threshold) ?? d.threshold
         speed = try c.decodeIfPresent(Double.self, forKey: .speed) ?? d.speed
         acceleration = try c.decodeIfPresent(Bool.self, forKey: .acceleration) ?? d.acceleration
-        axisLock = try c.decodeIfPresent(Bool.self, forKey: .axisLock) ?? d.axisLock
+        if let rawAxisMode = try c.decodeIfPresent(String.self, forKey: .axisMode) {
+            axisMode = AxisMode(rawValue: rawAxisMode) ?? d.axisMode
+        } else if let legacyAxisLock = try decoder.container(keyedBy: LegacyCodingKeys.self)
+            .decodeIfPresent(Bool.self, forKey: .axisLock) {
+            axisMode = legacyAxisLock ? .snap : .free
+        } else {
+            axisMode = d.axisMode
+        }
+        snapSensitivity = try c.decodeIfPresent(Double.self, forKey: .snapSensitivity) ?? d.snapSensitivity
         inertia = try c.decodeIfPresent(Bool.self, forKey: .inertia) ?? d.inertia
         throwDuration = try c.decodeIfPresent(Double.self, forKey: .throwDuration) ?? d.throwDuration
         reverseVertical = try c.decodeIfPresent(Bool.self, forKey: .reverseVertical) ?? d.reverseVertical

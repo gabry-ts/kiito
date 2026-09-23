@@ -42,7 +42,7 @@ enum Snapshots {
         settings.trigger = .button4
         settings.speed = 3.4
         settings.acceleration = true
-        settings.axisLock = false
+        settings.axisMode = .free
         settings.throwDuration = 60
         settings.cursorStyle = .compass
         return Profile(name: "Design Work", settings: settings)

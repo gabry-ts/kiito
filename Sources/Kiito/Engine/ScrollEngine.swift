@@ -59,6 +59,8 @@ final class ScrollEngine {
     }
 
     private var axis: Axis = .free
+    /// Recent ball travel per axis, exponentially decayed, used by Snap to switch axis.
+    private var recentTravel: CGVector = .zero
     private var lastMoveTime: TimeInterval = 0
     private var ballSpeed: Double = 0
 
@@ -67,6 +69,9 @@ final class ScrollEngine {
     private static let maxAcceleration: Double = 4
     /// While latched, a rest this long starts a new scroll gesture (fresh phase and axis lock).
     private static let latchedPause: TimeInterval = 0.3
+    /// Snap smoothing window and the dominance ratio needed to switch, from low to high sensitivity.
+    private static let snapWindow: ClosedRange<Double> = 0.06...0.15
+    private static let snapRatio: ClosedRange<Double> = 1.6...4
 
     private enum ScrollPhase: Int64 {
         case none = 0
@@ -159,7 +164,8 @@ final class ScrollEngine {
         travel = .zero
         remainder = .zero
         velocity.reset()
-        axis = settings.axisLock ? .undecided : .free
+        axis = initialAxis
+        recentTravel = .zero
         lastMoveTime = CACurrentMediaTime()
         ballSpeed = 0
         freezeCursor()
@@ -231,7 +237,8 @@ final class ScrollEngine {
         if isLatched && now - lastMoveTime > Self.latchedPause {
             endGesture()
             travel = .zero
-            axis = settings.axisLock ? .undecided : .free
+            axis = initialAxis
+            recentTravel = .zero
         }
         travel.dx += delta.dx
         travel.dy += delta.dy
@@ -240,6 +247,7 @@ final class ScrollEngine {
             pressTravel.dy += delta.dy
         }
         holdCursor(event)
+        trackRecentTravel(delta, elapsed: now - lastMoveTime)
 
         let gain = accelerationGain(for: delta, at: now)
 
@@ -251,6 +259,7 @@ final class ScrollEngine {
             return false
         }
 
+        snapAxisIfNeeded()
         guard let scroll = scrollDelta(for: delta, gain: gain) else { return false }
         velocity.add(scroll, at: now)
         postScroll(dx: scroll.dx, dy: scroll.dy, scrollPhase: gestureBegan ? .changed : .began)
@@ -283,6 +292,44 @@ final class ScrollEngine {
         case .free, .undecided: break
         }
         return scroll
+    }
+
+    private var initialAxis: Axis {
+        settings.axisMode == .free ? .free : .undecided
+    }
+
+    private func trackRecentTravel(_ delta: CGVector, elapsed: TimeInterval) {
+        let sensitivity = min(max(settings.snapSensitivity, 0), 1)
+        let window = Self.snapWindow.upperBound - sensitivity * (Self.snapWindow.upperBound - Self.snapWindow.lowerBound)
+        let decay = exp(-max(elapsed, 0) / window)
+        recentTravel.dx = recentTravel.dx * decay + abs(delta.dx)
+        recentTravel.dy = recentTravel.dy * decay + abs(delta.dy)
+    }
+
+    /// Snap: moves to the other axis once its recent travel clearly dominates.
+    /// The ratio doubles as hysteresis, since switching back needs the same dominance.
+    private func snapAxisIfNeeded() {
+        guard settings.axisMode == .snap else { return }
+        let sensitivity = min(max(settings.snapSensitivity, 0), 1)
+        let ratio = Self.snapRatio.upperBound - sensitivity * (Self.snapRatio.upperBound - Self.snapRatio.lowerBound)
+        // Low sensitivity also needs more recent travel, so brief wobbles never switch.
+        let minTravel = settings.threshold * (3 - 2 * sensitivity)
+        switch axis {
+        case .vertical where recentTravel.dx > minTravel && recentTravel.dx > ratio * recentTravel.dy:
+            switchAxis(to: .horizontal)
+        case .horizontal where recentTravel.dy > minTravel && recentTravel.dy > ratio * recentTravel.dx:
+            switchAxis(to: .vertical)
+        default:
+            break
+        }
+    }
+
+    /// Keeps the scroll phase going, so apps see one continuous gesture across the switch.
+    private func switchAxis(to newAxis: Axis) {
+        axis = newAxis
+        // Old-axis samples would otherwise leak into the release momentum.
+        velocity.reset()
+        if newAxis == .vertical { remainder.dx = 0 } else { remainder.dy = 0 }
     }
 
     private func accelerationGain(for delta: CGVector, at time: TimeInterval) -> Double {

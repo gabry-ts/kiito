@@ -58,7 +58,7 @@ extension Profile {
     private static var readingSettings: ScrollSettings {
         var settings = ScrollSettings()
         settings.speed = 1.5
-        settings.axisLock = true
+        settings.axisMode = .initial
         settings.throwDuration = 140
         return settings
     }

@@ -19,6 +19,14 @@ struct ProfileEditorView: View {
         )
     }
 
+    private var axisModeCaption: String {
+        switch profile.settings.axisMode {
+        case .free: "Scroll in any direction, following every change of direction."
+        case .snap: "Scroll along one axis, switching when movement clearly turns to the other."
+        case .initial: "Scroll along the axis you start on until you release the button."
+        }
+    }
+
     var body: some View {
         Form {
             Section("Activation") {
@@ -54,10 +62,25 @@ struct ProfileEditorView: View {
                     }
                 }
                 Toggle("Acceleration", isOn: settings.acceleration)
-                Toggle("Axis Lock", isOn: settings.axisLock)
-                Text("Keep scrolling straight when movement is mostly vertical or horizontal.")
+                Picker("Axis", selection: settings.axisMode) {
+                    Text("Free (360°)").tag(AxisMode.free)
+                    Text("Snap to Axis").tag(AxisMode.snap)
+                    Text("Lock to First Axis").tag(AxisMode.initial)
+                }
+                Text(axisModeCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if profile.settings.axisMode == .snap {
+                    LabeledContent("Snap Sensitivity") {
+                        HStack {
+                            Slider(value: settings.snapSensitivity, in: 0...1, step: 0.05)
+                            Text("\(Int((profile.settings.snapSensitivity * 100).rounded()))%")
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                                .frame(width: 44, alignment: .trailing)
+                        }
+                    }
+                }
             }
 
             Section("Inertia") {
