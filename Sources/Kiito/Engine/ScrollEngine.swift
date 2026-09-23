@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import QuartzCore
 
 /// Turns "hold trigger + move ball" into scrolling while the cursor stays frozen.
 /// A press without movement is replayed as a normal click of the same button.
@@ -39,7 +40,20 @@ final class ScrollEngine {
     private var travel: CGVector = .zero
     private var remainder: CGVector = .zero
     private var cursorFrozen = false
+    private var gestureBegan = false
+    private var velocity = VelocityTracker()
     private let source = CGEventSource(stateID: .combinedSessionState)
+
+    private lazy var momentum = Momentum { [unowned self] delta, phase in
+        self.postScroll(dx: delta.dx, dy: delta.dy, scrollPhase: .none, momentumPhase: phase)
+    }
+
+    private enum ScrollPhase: Int64 {
+        case none = 0
+        case began = 1
+        case changed = 2
+        case ended = 4
+    }
 
     private lazy var tap: EventTap = {
         let tap = EventTap { [unowned self] type, event in
@@ -61,6 +75,8 @@ final class ScrollEngine {
 
     /// Aborts any gesture and restores the cursor.
     func reset() {
+        momentum.stop()
+        endGesture()
         if state == .armed || state == .scrolling {
             state = .cancelled
         }
@@ -83,6 +99,9 @@ final class ScrollEngine {
         case .leftMouseDown:
             reset()
             return true
+        case .scrollWheel:
+            momentum.stop()
+            return true
         default:
             return true
         }
@@ -93,6 +112,7 @@ final class ScrollEngine {
     }
 
     private func triggerDown(_ event: CGEvent) -> Bool {
+        momentum.stop()
         switch state {
         case .idle, .cancelled:
             break
@@ -112,6 +132,7 @@ final class ScrollEngine {
         downEvent = event.copy()
         travel = .zero
         remainder = .zero
+        velocity.reset()
         freezeCursor()
         state = .armed
         return false
@@ -136,6 +157,11 @@ final class ScrollEngine {
             state = .idle
             unfreezeCursor()
             downEvent = nil
+            endGesture()
+            if settings.inertia {
+                momentum.start(velocity: velocity.velocity(at: CACurrentMediaTime()),
+                               throwDuration: settings.throwDuration)
+            }
             return false
         }
     }
@@ -159,8 +185,16 @@ final class ScrollEngine {
         }
 
         // Ball down scrolls toward the end of the document.
-        postScroll(dx: -delta.dx * settings.speed, dy: -delta.dy * settings.speed)
+        let scroll = CGVector(dx: -delta.dx * settings.speed, dy: -delta.dy * settings.speed)
+        velocity.add(scroll, at: CACurrentMediaTime())
+        postScroll(dx: scroll.dx, dy: scroll.dy, scrollPhase: gestureBegan ? .changed : .began)
         return false
+    }
+
+    /// Closes the trackpad-style scroll phase so apps settle (e.g. release rubber-banding).
+    private func endGesture() {
+        guard gestureBegan else { return }
+        postScroll(dx: 0, dy: 0, scrollPhase: .ended)
     }
 
     // MARK: - Cursor
@@ -197,13 +231,22 @@ final class ScrollEngine {
         }
     }
 
-    private func postScroll(dx: Double, dy: Double) {
+    private func postScroll(
+        dx: Double,
+        dy: Double,
+        scrollPhase: ScrollPhase,
+        momentumPhase: MomentumPhase? = nil
+    ) {
         let x = dx + remainder.dx
         let y = dy + remainder.dy
         let wheelX = Int32(x.rounded(.towardZero))
         let wheelY = Int32(y.rounded(.towardZero))
         remainder = CGVector(dx: x - Double(wheelX), dy: y - Double(wheelY))
-        guard wheelX != 0 || wheelY != 0 else { return }
+
+        // Phase transitions are always sent, plain updates only when they move something.
+        let isTransition = scrollPhase == .began || scrollPhase == .ended
+            || (momentumPhase != nil && momentumPhase != .continue)
+        guard wheelX != 0 || wheelY != 0 || isTransition else { return }
 
         guard let event = CGEvent(
             scrollWheelEvent2Source: source,
@@ -214,7 +257,16 @@ final class ScrollEngine {
             wheel3: 0
         ) else { return }
         event.location = anchor
+        event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        event.setIntegerValueField(.scrollWheelEventScrollPhase, value: scrollPhase.rawValue)
+        event.setIntegerValueField(.scrollWheelEventMomentumPhase, value: momentumPhase?.rawValue ?? 0)
         event.setIntegerValueField(.eventSourceUserData, value: EventTap.syntheticMarker)
         event.post(tap: .cgSessionEventTap)
+
+        switch scrollPhase {
+        case .began: gestureBegan = true
+        case .ended: gestureBegan = false
+        default: break
+        }
     }
 }
