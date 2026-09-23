@@ -87,12 +87,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let controller = NSHostingController(rootView: SettingsView().environment(store))
+        controller.sceneBridgingOptions = [.title, .toolbars]
         let window = NSWindow(contentViewController: controller)
+        // SwiftUI only bridges the pane title after the first selection change.
+        window.title = store.activeProfile.name
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        // A persistent toolbar keeps the bold unified title on every pane,
-        // including those that declare no toolbar items of their own.
-        window.toolbar = NSToolbar()
-        window.toolbarStyle = .unified
         window.setContentSize(NSSize(width: 820, height: 600))
         window.minSize = NSSize(width: 720, height: 520)
         window.center()
