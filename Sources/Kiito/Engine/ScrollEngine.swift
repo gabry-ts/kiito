@@ -48,6 +48,18 @@ final class ScrollEngine {
         self.postScroll(dx: delta.dx, dy: delta.dy, scrollPhase: .none, momentumPhase: phase)
     }
 
+    private enum Axis {
+        case undecided, horizontal, vertical, free
+    }
+
+    private var axis: Axis = .free
+    private var lastMoveTime: TimeInterval = 0
+    private var ballSpeed: Double = 0
+
+    /// Acceleration gain per point/second of ball speed, and its cap.
+    private static let accelerationPerSpeed: Double = 1.0 / 1500.0
+    private static let maxAcceleration: Double = 4
+
     private enum ScrollPhase: Int64 {
         case none = 0
         case began = 1
@@ -133,6 +145,9 @@ final class ScrollEngine {
         travel = .zero
         remainder = .zero
         velocity.reset()
+        axis = settings.axisLock ? .undecided : .free
+        lastMoveTime = CACurrentMediaTime()
+        ballSpeed = 0
         freezeCursor()
         state = .armed
         return false
@@ -177,6 +192,9 @@ final class ScrollEngine {
         travel.dy += delta.dy
         holdCursor(event)
 
+        let now = CACurrentMediaTime()
+        let gain = accelerationGain(for: delta, at: now)
+
         if state == .armed {
             if hypot(travel.dx, travel.dy) > settings.threshold {
                 state = .scrolling
@@ -184,11 +202,47 @@ final class ScrollEngine {
             return false
         }
 
-        // Ball down scrolls toward the end of the document.
-        let scroll = CGVector(dx: -delta.dx * settings.speed, dy: -delta.dy * settings.speed)
-        velocity.add(scroll, at: CACurrentMediaTime())
+        guard let scroll = scrollDelta(for: delta, gain: gain) else { return false }
+        velocity.add(scroll, at: now)
         postScroll(dx: scroll.dx, dy: scroll.dy, scrollPhase: gestureBegan ? .changed : .began)
         return false
+    }
+
+    /// Maps ball travel to a scroll delta, or nil while the locked axis is still unclear.
+    private func scrollDelta(for delta: CGVector, gain: Double) -> CGVector? {
+        if axis == .undecided {
+            let ax = abs(travel.dx)
+            let ay = abs(travel.dy)
+            if ay > 2 * ax || (ay >= ax && ay > 3 * settings.threshold) {
+                axis = .vertical
+            } else if ax > 2 * ay || ax > 3 * settings.threshold {
+                axis = .horizontal
+            } else {
+                return nil
+            }
+        }
+
+        // Ball down scrolls toward the end of the document unless reversed.
+        let scale = settings.speed * gain
+        var scroll = CGVector(
+            dx: delta.dx * scale * (settings.reverseHorizontal ? 1 : -1),
+            dy: delta.dy * scale * (settings.reverseVertical ? 1 : -1)
+        )
+        switch axis {
+        case .vertical: scroll.dx = 0
+        case .horizontal: scroll.dy = 0
+        case .free, .undecided: break
+        }
+        return scroll
+    }
+
+    private func accelerationGain(for delta: CGVector, at time: TimeInterval) -> Double {
+        let dt = min(max(time - lastMoveTime, 0.004), 0.1)
+        lastMoveTime = time
+        // Light smoothing, since per-event timing from the ball is noisy.
+        ballSpeed = 0.5 * ballSpeed + 0.5 * hypot(delta.dx, delta.dy) / dt
+        guard settings.acceleration else { return 1 }
+        return min(1 + Self.accelerationPerSpeed * ballSpeed, Self.maxAcceleration)
     }
 
     /// Closes the trackpad-style scroll phase so apps settle (e.g. release rubber-banding).
