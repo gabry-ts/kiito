@@ -32,12 +32,17 @@ final class ScrollEngine {
         case scrolling
         /// Gesture aborted while the trigger was held; swallow its release.
         case cancelled
+        /// Stay On: scroll mode toggled on, the ball scrolls without holding the trigger.
+        case latched
+        /// Trigger held while latched: a click exits, a hold and move keeps scrolling.
+        case latchedPress
     }
 
     private var state: State = .idle
     private var anchor: CGPoint = .zero
     private var downEvent: CGEvent?
     private var travel: CGVector = .zero
+    private var pressTravel: CGVector = .zero
     private var remainder: CGVector = .zero
     private var cursorFrozen = false
     private var gestureBegan = false
@@ -59,6 +64,8 @@ final class ScrollEngine {
     /// Acceleration gain per point/second of ball speed, and its cap.
     private static let accelerationPerSpeed: Double = 1.0 / 1500.0
     private static let maxAcceleration: Double = 4
+    /// While latched, a rest this long starts a new scroll gesture (fresh phase and axis lock).
+    private static let latchedPause: TimeInterval = 0.3
 
     private enum ScrollPhase: Int64 {
         case none = 0
@@ -89,8 +96,10 @@ final class ScrollEngine {
     func reset() {
         momentum.stop()
         endGesture()
-        if state == .armed || state == .scrolling {
-            state = .cancelled
+        switch state {
+        case .armed, .scrolling, .latchedPress: state = .cancelled
+        case .latched: state = .idle
+        case .idle, .passThrough, .cancelled: break
         }
         downEvent = nil
         unfreezeCursor()
@@ -130,7 +139,11 @@ final class ScrollEngine {
             break
         case .passThrough:
             return true
-        case .armed, .scrolling:
+        case .armed, .scrolling, .latchedPress:
+            return false
+        case .latched:
+            pressTravel = .zero
+            state = .latchedPress
             return false
         }
 
@@ -164,35 +177,68 @@ final class ScrollEngine {
             state = .idle
             return false
         case .armed:
-            state = .idle
-            unfreezeCursor()
-            replayClick(up: event)
+            if settings.stayOn {
+                downEvent = nil
+                travel = .zero
+                lastMoveTime = CACurrentMediaTime()
+                state = .latched
+            } else {
+                state = .idle
+                unfreezeCursor()
+                replayClick(up: event)
+            }
             return false
         case .scrolling:
-            state = .idle
-            unfreezeCursor()
-            downEvent = nil
-            endGesture()
-            if settings.inertia {
-                momentum.start(velocity: velocity.velocity(at: CACurrentMediaTime()),
-                               throwDuration: settings.throwDuration)
+            finishScrolling()
+            return false
+        case .latched:
+            return true
+        case .latchedPress:
+            if hypot(pressTravel.dx, pressTravel.dy) > settings.threshold {
+                state = .latched
+            } else {
+                finishScrolling()
             }
             return false
         }
     }
 
+    private func finishScrolling() {
+        state = .idle
+        unfreezeCursor()
+        downEvent = nil
+        endGesture()
+        if settings.inertia {
+            momentum.start(velocity: velocity.velocity(at: CACurrentMediaTime()),
+                           throwDuration: settings.throwDuration)
+        }
+    }
+
     private func moved(_ event: CGEvent) -> Bool {
-        guard state == .armed || state == .scrolling else { return true }
+        switch state {
+        case .armed, .scrolling, .latched, .latchedPress: break
+        case .idle, .passThrough, .cancelled: return true
+        }
 
         let delta = CGVector(
             dx: event.getDoubleValueField(.mouseEventDeltaX),
             dy: event.getDoubleValueField(.mouseEventDeltaY)
         )
+        let now = CACurrentMediaTime()
+        let isLatched = state == .latched || state == .latchedPress
+        if isLatched && now - lastMoveTime > Self.latchedPause {
+            endGesture()
+            travel = .zero
+            axis = settings.axisLock ? .undecided : .free
+        }
         travel.dx += delta.dx
         travel.dy += delta.dy
+        if state == .latchedPress {
+            pressTravel.dx += delta.dx
+            pressTravel.dy += delta.dy
+        }
         holdCursor(event)
 
-        let now = CACurrentMediaTime()
         let gain = accelerationGain(for: delta, at: now)
 
         if state == .armed {
