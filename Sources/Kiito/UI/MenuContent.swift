@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuContent: View {
     @Environment(SettingsStore.self) private var store
+    let openSettings: () -> Void
 
     var body: some View {
         @Bindable var store = store
@@ -18,7 +19,7 @@ struct MenuContent: View {
         .pickerStyle(.inline)
         Divider()
         Button("Settings…") {
-            (NSApp.delegate as? AppDelegate)?.openSettingsWindow()
+            openSettings()
         }
         .keyboardShortcut(",")
         Divider()

@@ -6,7 +6,7 @@ struct KiitoApp: App {
 
     var body: some Scene {
         MenuBarExtra(isInserted: showMenuBarIconBinding) {
-            MenuContent()
+            MenuContent(openSettings: { appDelegate.openSettingsWindow() })
                 .environment(appDelegate.store)
         } label: {
             MenuBarIcon()
