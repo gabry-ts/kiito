@@ -112,7 +112,7 @@ struct SettingsView: View {
 private struct GeneralView: View {
     @Environment(SettingsStore.self) private var store
     @State private var isAccessibilityTrusted = Permissions.isTrusted
-    @State private var launchAtLoginPlaceholder = false
+    @State private var loginItemStatus = LoginItem.status
 
     var body: some View {
         @Bindable var store = store
@@ -123,7 +123,18 @@ private struct GeneralView: View {
                 Text("Relaunch Kiito from Spotlight or Finder to reopen settings when hidden.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Toggle("Launch at Login", isOn: $launchAtLoginPlaceholder)
+            }
+            Section {
+                Toggle("Launch at Login", isOn: launchAtLoginBinding)
+                if loginItemStatus == .requiresApproval {
+                    HStack {
+                        Text("Approval needed in Login Items settings.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Open Login Items") { LoginItem.openSystemSettings() }
+                    }
+                }
             }
             Section("Accessibility") {
                 LabeledContent("Status") {
@@ -147,7 +158,24 @@ private struct GeneralView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("General")
-        .onAppear { isAccessibilityTrusted = Permissions.isTrusted }
+        .onAppear {
+            isAccessibilityTrusted = Permissions.isTrusted
+            loginItemStatus = LoginItem.status
+        }
+    }
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { loginItemStatus == .enabled || loginItemStatus == .requiresApproval },
+            set: { newValue in
+                if newValue {
+                    LoginItem.register()
+                } else {
+                    LoginItem.unregister()
+                }
+                loginItemStatus = LoginItem.status
+            }
+        )
     }
 
     private var versionString: String {

@@ -60,6 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let defaults = UserDefaults.standard
         if !defaults.bool(forKey: Self.hasLaunchedBeforeKey) {
             defaults.set(true, forKey: Self.hasLaunchedBeforeKey)
+            LoginItem.register()
             openSettingsWindow()
         }
     }
