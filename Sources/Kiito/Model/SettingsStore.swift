@@ -27,6 +27,9 @@ final class SettingsStore {
 
     private weak var engine: ScrollEngine?
     private var saveTask: Task<Void, Never>?
+    /// False for the in-memory store used when rendering offscreen snapshots, so mock
+    /// data never touches the real settings.json.
+    private let persistsToDisk: Bool
 
     private static let directory = FileManager.default
         .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -42,6 +45,7 @@ final class SettingsStore {
     }
 
     init() {
+        persistsToDisk = true
         if let persisted = Self.load() {
             profiles = persisted.profiles
             activeProfileID = persisted.activeProfileID
@@ -58,6 +62,17 @@ final class SettingsStore {
         if !profiles.contains(where: { $0.id == activeProfileID }) {
             activeProfileID = profiles.first?.id ?? Profile.defaultProfileID
         }
+    }
+
+    /// In-memory store seeded with mock data, for offscreen snapshot rendering. Never
+    /// reads or writes settings.json.
+    init(profiles: [Profile], activeProfileID: UUID, excludedBundleIDs: [String], isEnabled: Bool, showMenuBarIcon: Bool) {
+        persistsToDisk = false
+        self.profiles = profiles
+        self.activeProfileID = activeProfileID
+        self.excludedBundleIDs = excludedBundleIDs
+        self.isEnabled = isEnabled
+        self.showMenuBarIcon = showMenuBarIcon
     }
 
     /// Connects the engine so it reflects the active profile and enabled state from now on.
@@ -161,6 +176,7 @@ final class SettingsStore {
     }
 
     private func save() {
+        guard persistsToDisk else { return }
         saveTask?.cancel()
         let snapshot = Persisted(
             profiles: profiles,

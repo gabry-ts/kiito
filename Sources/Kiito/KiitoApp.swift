@@ -4,6 +4,13 @@ import SwiftUI
 struct KiitoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
+    init() {
+        let args = CommandLine.arguments
+        if let i = args.firstIndex(of: "--render-snapshots"), args.indices.contains(i + 1) {
+            exit(MainActor.assumeIsolated { Snapshots.render(to: URL(fileURLWithPath: args[i + 1])) })
+        }
+    }
+
     var body: some Scene {
         MenuBarExtra(isInserted: showMenuBarIconBinding) {
             MenuContent(openSettings: { appDelegate.openSettingsWindow() })

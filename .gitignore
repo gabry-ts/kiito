@@ -1,6 +1,7 @@
 .build/
 build/
 .swiftpm/
+snapshots/
 .DS_Store
 .claude/
 CLAUDE.md

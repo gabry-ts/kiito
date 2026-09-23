@@ -6,10 +6,14 @@ struct SettingsView: View {
     @State private var renamingProfileID: UUID?
     @State private var renameText = ""
 
-    private enum SidebarItem: Hashable {
+    enum SidebarItem: Hashable {
         case profile(UUID)
         case excludedApps
         case general
+    }
+
+    init(initialSelection: SidebarItem? = nil) {
+        _selection = State(initialValue: initialSelection)
     }
 
     var body: some View {
