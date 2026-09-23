@@ -40,7 +40,7 @@ struct ScrollSettings: Codable, Equatable, Sendable {
     var reverseVertical: Bool = false
     var reverseHorizontal: Bool = false
     var stayOn: Bool = false
-    var cursorStyle: CursorStyle = .smoozeCircle
+    var cursorStyle: CursorStyle = .dot
 
     static let throwDurationRange: ClosedRange<Double> = 0...300
 
