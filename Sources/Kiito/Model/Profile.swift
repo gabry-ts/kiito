@@ -26,11 +26,19 @@ extension Profile {
     /// The starting set of profiles for a fresh install.
     static var presets: [Profile] {
         [
-            Profile(id: defaultProfileID, name: "Default", settings: ScrollSettings(), isDefault: true),
+            Profile(id: defaultProfileID, name: "Default", settings: defaultSettings, isDefault: true),
             Profile(id: preciseProfileID, name: "Precise", settings: preciseSettings),
             Profile(id: fastProfileID, name: "Fast", settings: fastSettings),
             Profile(id: readingProfileID, name: "Reading", settings: readingSettings),
         ]
+    }
+
+    private static var defaultSettings: ScrollSettings {
+        var settings = ScrollSettings()
+        settings.threshold = 7
+        settings.reverseVertical = true
+        settings.reverseHorizontal = true
+        return settings
     }
 
     private static var preciseSettings: ScrollSettings {
