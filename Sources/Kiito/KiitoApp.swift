@@ -25,6 +25,7 @@ struct KiitoApp: App {
 private struct MenuBarIcon: View {
     var body: some View {
         if let image = NSImage(named: "MenuBarIcon") {
+            let _ = image.isTemplate = true
             Image(nsImage: image)
         } else {
             Image(systemName: "circle.circle")
