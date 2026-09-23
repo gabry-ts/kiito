@@ -38,7 +38,7 @@ Trackballs like the Logitech MX Ergo are great pointing devices, but scrolling o
 | **Grab-scroll** | Hold a trigger button (right, middle, button 4 or button 5) and move the ball to scroll; release without crossing the movement threshold and it's passed through as a normal click. Optional "Stay On" mode toggles scrolling on and off with a click instead of holding the trigger down. |
 | **Tuning** | Adjustable speed and acceleration, axis lock (to stop horizontal drift while scrolling vertically), inertia with a throw duration control, and independent reversal of the vertical and horizontal axes. |
 | **Profiles** | Four built-in profiles (Default, Precise, Fast, Reading) tuned for different tasks, plus unlimited custom profiles, switchable from the menu bar. |
-| **Cursor** | Four cursor styles while scrolling: a circular indicator, a closed hand, the system move cursor, or none at all. |
+| **Cursor** | Eight cursor styles while scrolling: a circular indicator, a closed hand, the system move cursor, a dot, a vertical capsule, a compass, a glass disc, or none at all. |
 | **Per-app exclusions** | Apps added to the exclusion list keep their normal right click; Kiito won't respond to the trigger button there. |
 | **Menu bar** | Hideable menu bar icon (relaunch Kiito from Spotlight or Finder to bring settings back), launch at login, and a quick enable/disable toggle. |
 
