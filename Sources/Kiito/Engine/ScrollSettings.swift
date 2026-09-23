@@ -19,6 +19,10 @@ enum CursorStyle: String, Codable, CaseIterable, Sendable {
     case smoozeCircle
     case closedHand
     case systemMove
+    case dot
+    case vertical
+    case compass
+    case glass
     case none
 }
 
@@ -56,6 +60,13 @@ struct ScrollSettings: Codable, Equatable, Sendable {
         reverseVertical = try c.decodeIfPresent(Bool.self, forKey: .reverseVertical) ?? d.reverseVertical
         reverseHorizontal = try c.decodeIfPresent(Bool.self, forKey: .reverseHorizontal) ?? d.reverseHorizontal
         stayOn = try c.decodeIfPresent(Bool.self, forKey: .stayOn) ?? d.stayOn
-        cursorStyle = try c.decodeIfPresent(CursorStyle.self, forKey: .cursorStyle) ?? d.cursorStyle
+        // Decoded through the raw value so an unrecognized style (e.g. from a newer
+        // build) falls back to the default instead of failing the whole decode.
+        if let rawCursorStyle = try c.decodeIfPresent(String.self, forKey: .cursorStyle),
+           let style = CursorStyle(rawValue: rawCursorStyle) {
+            cursorStyle = style
+        } else {
+            cursorStyle = d.cursorStyle
+        }
     }
 }

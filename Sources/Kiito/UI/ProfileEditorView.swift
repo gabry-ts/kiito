@@ -107,15 +107,20 @@ private struct CursorStylePicker: View {
         (.smoozeCircle, "Circle"),
         (.closedHand, "Hand"),
         (.systemMove, "Move"),
+        (.dot, "Dot"),
+        (.vertical, "Vertical"),
+        (.compass, "Compass"),
+        (.glass, "Glass"),
         (.none, "None"),
     ]
 
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
+
     var body: some View {
-        HStack(spacing: 12) {
+        LazyVGrid(columns: columns, spacing: 12) {
             ForEach(options, id: \.style) { option in
                 tile(style: option.style, label: option.label)
             }
-            Spacer()
         }
         .padding(.vertical, 4)
     }
@@ -130,7 +135,7 @@ private struct CursorStylePicker: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(.quaternary)
-                        .frame(width: 56, height: 56)
+                        .aspectRatio(1, contentMode: .fit)
                     if let image = CursorOverlay.previewImage(for: style) {
                         Image(nsImage: image)
                     } else {
@@ -145,7 +150,10 @@ private struct CursorStylePicker: View {
                 Text(label)
                     .font(.caption)
                     .foregroundStyle(isSelected ? .primary : .secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
     }
