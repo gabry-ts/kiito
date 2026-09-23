@@ -123,6 +123,17 @@ final class SettingsStore {
         updateSettings(id, preset.settings)
     }
 
+    // MARK: - Excluded apps
+
+    func addExcludedApp(at url: URL) {
+        guard let bundleID = Bundle(url: url)?.bundleIdentifier, !excludedBundleIDs.contains(bundleID) else { return }
+        excludedBundleIDs.append(bundleID)
+    }
+
+    func removeExcludedApp(_ bundleID: String) {
+        excludedBundleIDs.removeAll { $0 == bundleID }
+    }
+
     // MARK: - Private
 
     private func nextProfileName() -> String {

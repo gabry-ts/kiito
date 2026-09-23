@@ -22,6 +22,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         store.attach(engine: engine)
+        engine.shouldIgnore = { [weak store] pid in
+            guard let store,
+                  let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
+            else { return false }
+            return store.excludedBundleIDs.contains(bundleID)
+        }
 
         if !Permissions.isTrusted {
             Permissions.requestAccess()
