@@ -26,7 +26,7 @@
 ## Features
 
 - **Grab-scroll**: hold a trigger button (right, middle, button 4, or button 5) and move the ball to scroll. Release without crossing the movement threshold and it passes through as a normal click. An optional "Stay On" mode toggles scrolling with a click instead of holding the trigger.
-- **Tuning**: adjustable speed and acceleration, axis lock to stop horizontal drift while scrolling vertically, inertia with a throw duration control, and independent reversal of each axis.
+- **Tuning**: adjustable speed and acceleration, three axis modes (free 360° scrolling, snap to one axis with adjustable switching sensitivity, or lock to the first axis until release), inertia with a throw duration control, and independent reversal of each axis.
 - **Profiles**: four built-in profiles (Default, Precise, Fast, Reading) plus unlimited custom profiles, switchable from the menu bar.
 - **Cursor**: eight styles while scrolling, including a circular indicator, a closed hand, the system move cursor, a dot, a vertical capsule, a compass, a glass disc, or none at all.
 - **Per-app exclusions**: apps on the exclusion list keep their normal right click. Kiito ignores the trigger button there.
