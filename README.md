@@ -30,7 +30,7 @@
 - **Profiles**: four built-in profiles (Default, Precise, Fast, Reading) plus unlimited custom profiles, switchable from the menu bar.
 - **Cursor**: eight styles while scrolling, including a circular indicator, a closed hand, the system move cursor, a dot, a vertical capsule, a compass, a glass disc, or none at all.
 - **Per-app exclusions**: apps on the exclusion list keep their normal right click. Kiito ignores the trigger button there.
-- **Menu bar**: hideable icon (relaunch from Spotlight or Finder to bring settings back), launch at login, and a quick enable/disable toggle.
+- **Menu bar**: hideable icon (relaunch from Spotlight or Finder to bring settings back), launch at login, a quick enable/disable toggle, and automatic update checks via Sparkle.
 
 ## Screenshots
 
@@ -45,15 +45,23 @@
 - macOS 26 or later.
 - A trackball or mouse with a spare button to use as the trigger (right, middle, button 4, or button 5).
 - Accessibility permission, to install the event tap that intercepts mouse events.
+- A universal build is provided, so both Apple Silicon and Intel Macs are supported natively.
 
 ## Install
 
+Using Homebrew:
+
+```sh
+brew install --cask gabry-ts/tap/kiito
+```
+
+Or manually:
+
 1. Download the latest `Kiito-<version>.dmg` from [Releases](https://github.com/gabry-ts/kiito/releases) and drag the app to Applications. Kiito uses `SMAppService` for launch at login, which only works reliably when the app lives in `/Applications`.
-2. Kiito is signed with a local Apple Development identity and not notarized, so Gatekeeper blocks the first launch:
-   - Open the app once, then go to **System Settings > Privacy & Security** and click **Open Anyway** (on older macOS versions, right-click the app and choose **Open**).
-   - Or remove the quarantine flag from Terminal: `xattr -dr com.apple.quarantine /Applications/Kiito.app`
-3. Launch Kiito. On first launch it asks for Accessibility permission. Grant it in **System Settings > Privacy & Security > Accessibility**; the settings window opens automatically.
-4. If a rebuild or reinstall ever invalidates the Accessibility grant, remove and re-add Kiito in that same Accessibility list.
+2. Launch Kiito. Since 1.0.0 it's signed with a Developer ID certificate and notarized by Apple, so it opens right away with no Gatekeeper warning and no quarantine workaround needed.
+3. On first launch it asks for Accessibility permission. Grant it in **System Settings > Privacy & Security > Accessibility**; the settings window opens automatically.
+
+Kiito checks for updates automatically from 1.0.0 onward, using [Sparkle](https://sparkle-project.org). If you're updating from an older version, there's no updater to carry you across, so download 1.0.0 manually once; every release after that installs itself. That update also changes Kiito's signature, which invalidates any Accessibility grant from a version before 1.0.0. If Kiito is already listed under Accessibility but stops working after updating, remove it from the list with the minus button, relaunch Kiito, and grant access again.
 
 ## Reopening settings
 
@@ -74,8 +82,9 @@ open build/Kiito.app
 ./scripts/make-dmg.sh   # build/Kiito-<version>.dmg
 ```
 
-- `build.sh` builds a release binary with Swift Package Manager, assembles `build/Kiito.app`, and code-signs it with a local Apple Development identity so the Accessibility grant survives rebuilds.
-- `make-dmg.sh` builds the app first if `build/Kiito.app` doesn't exist yet (pass `--rebuild` to force a fresh build), then packages it with `hdiutil`, using only tools that ship with macOS.
+- `build.sh` builds a universal (arm64 + x86_64) release binary with Swift Package Manager, assembles `build/Kiito.app` with Sparkle.framework embedded, and code-signs it. The identity comes from `KIITO_SIGN_IDENTITY`, defaulting to `Developer ID Application`; pass `KIITO_SIGN_IDENTITY=-` to sign ad hoc for local testing without a certificate. A stable Developer ID identity across builds and updates is what keeps the Accessibility grant valid.
+- `make-dmg.sh` builds the app first if `build/Kiito.app` doesn't exist yet (pass `--rebuild` to force a fresh build), then packages it with [`create-dmg`](https://github.com/create-dmg/create-dmg) (`brew install create-dmg`) and signs the disk image with the same identity.
+- `release.sh` runs the full release pipeline used by CI: build, sign, package, notarize with `notarytool`, staple the ticket, and generate the Sparkle appcast. See the script header for the required environment variables.
 
 ## Uninstall
 
@@ -87,13 +96,12 @@ open build/Kiito.app
 
 - Settings stay on your Mac, in a local JSON file you can inspect or delete at any time.
 - Kiito reads mouse events and the bundle identifier of the app under the cursor, to apply per-app exclusions. It doesn't read keystrokes or window content.
-- No network access, no analytics, no account, no server.
+- No analytics, no account, no server. The only network activity is Sparkle checking GitHub for new releases, which you can turn off in Settings.
 
 ## Notes
 
 - Hiding the system cursor while scrolling relies on an undocumented CoreGraphics connection property (`SetsCursorInBackground`), since a background app can't otherwise change the global cursor.
 - If that private call is unavailable, Kiito falls back to drawing its own cursor overlay on top of the system cursor.
-- The app is not notarized; see Install for how to open it anyway.
 
 ## License
 
