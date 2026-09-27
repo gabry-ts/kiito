@@ -8,8 +8,8 @@ SIGN_IDENTITY="${KIITO_SIGN_IDENTITY:-Apple Development: gabrielepartiti@outlook
 APP="$ROOT/build/Kiito.app"
 FRAMEWORKS="$APP/Contents/Frameworks"
 
-swift build -c release
-BIN_DIR="$(swift build -c release --show-bin-path)"
+swift build -c release --arch arm64 --arch x86_64
+BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
 
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$FRAMEWORKS"
 cp "$BIN_DIR/Kiito" "$APP/Contents/MacOS/Kiito"
