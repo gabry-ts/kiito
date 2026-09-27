@@ -4,6 +4,7 @@ struct MenuContent: View {
     @Environment(SettingsStore.self) private var store
     let openSettings: () -> Void
     let checkForUpdates: () -> Void
+    let openBuyMeACoffee: () -> Void
 
     var body: some View {
         @Bindable var store = store
@@ -21,6 +22,9 @@ struct MenuContent: View {
         Divider()
         Button("Check for Updates…") {
             checkForUpdates()
+        }
+        Button("Buy Me a Coffee…") {
+            openBuyMeACoffee()
         }
         Divider()
         Button("Settings…") {

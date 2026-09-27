@@ -164,6 +164,9 @@ private struct GeneralView: View {
             }
             Section("About") {
                 LabeledContent("Version", value: versionString)
+                Button("Buy Me a Coffee…") { BuyMeACoffee.open() }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

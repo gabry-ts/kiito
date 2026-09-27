@@ -16,7 +16,8 @@ struct KiitoApp: App {
         MenuBarExtra(isInserted: showMenuBarIconBinding) {
             MenuContent(
                 openSettings: { appDelegate.openSettingsWindow() },
-                checkForUpdates: { appDelegate.updaterController.checkForUpdates(nil) }
+                checkForUpdates: { appDelegate.updaterController.checkForUpdates(nil) },
+                openBuyMeACoffee: { BuyMeACoffee.open() }
             )
             .environment(appDelegate.store)
         } label: {
