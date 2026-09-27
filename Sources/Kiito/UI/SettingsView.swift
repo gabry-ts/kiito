@@ -1,3 +1,4 @@
+import Sparkle
 import SwiftUI
 
 struct SettingsView: View {
@@ -114,8 +115,10 @@ struct SettingsView: View {
 
 private struct GeneralView: View {
     @Environment(SettingsStore.self) private var store
+    @Environment(\.updater) private var updater
     @State private var isAccessibilityTrusted = Permissions.isTrusted
     @State private var loginItemStatus = LoginItem.status
+    @State private var automaticallyChecksForUpdates = false
 
     var body: some View {
         @Bindable var store = store
@@ -155,6 +158,10 @@ private struct GeneralView: View {
                     }
                 }
             }
+            Section("Updates") {
+                Toggle("Automatically Check for Updates", isOn: automaticUpdatesBinding)
+                Button("Check for Updates…") { updater?.checkForUpdates() }
+            }
             Section("About") {
                 LabeledContent("Version", value: versionString)
             }
@@ -170,7 +177,18 @@ private struct GeneralView: View {
         .onAppear {
             isAccessibilityTrusted = Permissions.isTrusted
             loginItemStatus = LoginItem.status
+            automaticallyChecksForUpdates = updater?.automaticallyChecksForUpdates ?? false
         }
+    }
+
+    private var automaticUpdatesBinding: Binding<Bool> {
+        Binding(
+            get: { automaticallyChecksForUpdates },
+            set: { newValue in
+                automaticallyChecksForUpdates = newValue
+                updater?.automaticallyChecksForUpdates = newValue
+            }
+        )
     }
 
     private var launchAtLoginBinding: Binding<Bool> {

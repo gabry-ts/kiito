@@ -1,3 +1,4 @@
+import Sparkle
 import SwiftUI
 
 @main
@@ -13,8 +14,11 @@ struct KiitoApp: App {
 
     var body: some Scene {
         MenuBarExtra(isInserted: showMenuBarIconBinding) {
-            MenuContent(openSettings: { appDelegate.openSettingsWindow() })
-                .environment(appDelegate.store)
+            MenuContent(
+                openSettings: { appDelegate.openSettingsWindow() },
+                checkForUpdates: { appDelegate.updaterController.checkForUpdates(nil) }
+            )
+            .environment(appDelegate.store)
         } label: {
             MenuBarIcon()
         }
@@ -44,6 +48,9 @@ private struct MenuBarIcon: View {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let engine = ScrollEngine()
     let store = SettingsStore()
+    let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil
+    )
     private let permissions = Permissions()
     private var settingsWindow: NSWindow?
 
@@ -93,7 +100,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let controller = NSHostingController(rootView: SettingsView().environment(store))
+        let controller = NSHostingController(
+            rootView: SettingsView()
+                .environment(store)
+                .environment(\.updater, updaterController.updater)
+        )
         controller.sceneBridgingOptions = [.title, .toolbars]
         let window = NSWindow(contentViewController: controller)
         // SwiftUI only bridges the pane title after the first selection change.

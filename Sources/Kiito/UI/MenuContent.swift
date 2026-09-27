@@ -3,6 +3,7 @@ import SwiftUI
 struct MenuContent: View {
     @Environment(SettingsStore.self) private var store
     let openSettings: () -> Void
+    let checkForUpdates: () -> Void
 
     var body: some View {
         @Bindable var store = store
@@ -17,6 +18,10 @@ struct MenuContent: View {
             }
         }
         .pickerStyle(.inline)
+        Divider()
+        Button("Check for Updates…") {
+            checkForUpdates()
+        }
         Divider()
         Button("Settings…") {
             openSettings()
