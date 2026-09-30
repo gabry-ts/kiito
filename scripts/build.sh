@@ -21,11 +21,6 @@ cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 if [[ -f "$ROOT/Resources/AppIcon.icns" ]]; then
     cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 fi
-shopt -s nullglob
-for icon in "$ROOT"/Resources/MenuBarIcon*.png; do
-    cp "$icon" "$APP/Contents/Resources/"
-done
-shopt -u nullglob
 
 ditto "$BIN_DIR/Sparkle.framework" "$FRAMEWORKS/Sparkle.framework"
 

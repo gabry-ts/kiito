@@ -12,36 +12,10 @@ struct KiitoApp: App {
         }
     }
 
+    /// The menu bar item is an NSStatusItem owned by the app delegate; this scene only
+    /// satisfies SwiftUI's need for one.
     var body: some Scene {
-        MenuBarExtra(isInserted: showMenuBarIconBinding) {
-            MenuContent(
-                openSettings: { appDelegate.openSettingsWindow() },
-                checkForUpdates: { appDelegate.updaterController.checkForUpdates(nil) },
-                openBuyMeACoffee: { BuyMeACoffee.open() }
-            )
-            .environment(appDelegate.store)
-        } label: {
-            MenuBarIcon()
-        }
-    }
-
-    private var showMenuBarIconBinding: Binding<Bool> {
-        Binding(
-            get: { appDelegate.store.showMenuBarIcon },
-            set: { appDelegate.store.showMenuBarIcon = $0 }
-        )
-    }
-}
-
-/// Isolates the menu bar glyph so it can be swapped for a bundled template image later.
-private struct MenuBarIcon: View {
-    var body: some View {
-        if let image = NSImage(named: "MenuBarIcon") {
-            let _ = image.isTemplate = true
-            Image(nsImage: image)
-        } else {
-            Image(systemName: "circle.circle")
-        }
+        SwiftUI.Settings { EmptyView() }
     }
 }
 
@@ -57,11 +31,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
     private let permissions = Permissions()
     private var settingsWindow: NSWindow?
+    private var statusItem: StatusItemController?
 
     private static let hasLaunchedBeforeKey = "hasLaunchedBefore"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         store.attach(engine: engine)
+        statusItem = StatusItemController(store: store) { [weak self] in
+            guard let self else { return AnyView(EmptyView()) }
+            return AnyView(
+                MenuContent(
+                    openSettings: { [weak self] in
+                        self?.statusItem?.closePopover()
+                        self?.openSettingsWindow()
+                    },
+                    openExcludedApps: { [weak self] in
+                        self?.statusItem?.closePopover()
+                        self?.openSettingsWindow()
+                    },
+                    checkForUpdates: { [weak self] in
+                        self?.statusItem?.closePopover()
+                        self?.updaterController.checkForUpdates(nil)
+                    },
+                    openBuyMeACoffee: { [weak self] in
+                        self?.statusItem?.closePopover()
+                        BuyMeACoffee.open()
+                    }
+                )
+                .environment(store)
+            )
+        }
         engine.shouldIgnore = { [weak store] pid in
             guard let store,
                   let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier

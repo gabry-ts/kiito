@@ -1,5 +1,5 @@
+import AppKit
 import ApplicationServices
-import Foundation
 
 @MainActor
 final class Permissions {
@@ -10,6 +10,13 @@ final class Permissions {
     static func requestAccess() -> Bool {
         let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         return AXIsProcessTrustedWithOptions(options)
+    }
+
+    /// Opens Privacy & Security, Accessibility in System Settings.
+    static func openSystemSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private var timer: Timer?
