@@ -49,8 +49,11 @@ private struct MenuBarIcon: View {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let engine = ScrollEngine()
     let store = SettingsStore()
+    /// The offscreen render harness builds ordinary views with sample data; starting Sparkle
+    /// there would reach the network and could show its own permission alert.
     let updaterController = SPUStandardUpdaterController(
-        startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil
+        startingUpdater: !CommandLine.arguments.contains("--render-snapshots"),
+        updaterDelegate: nil, userDriverDelegate: nil
     )
     private let permissions = Permissions()
     private var settingsWindow: NSWindow?
