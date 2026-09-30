@@ -1,9 +1,11 @@
 import AppKit
+import PartitiUI
 import SwiftUI
 
-/// `Kiito --render-snapshots <dir>` renders the settings window with mock data, in light
-/// and dark mode, for the README screenshots. Never starts the event tap, requests
-/// Accessibility, registers the login item, or touches the real settings.json.
+/// `Kiito --render-snapshots <dir>` renders the popover and the settings window with mock
+/// data, in light and dark mode, for review and the README screenshots. Never starts the
+/// event tap, requests Accessibility, registers the login item, or touches the real
+/// settings.json.
 @MainActor
 enum Snapshots {
     static func render(to dir: URL) -> Int32 {
@@ -20,16 +22,31 @@ enum Snapshots {
             showMenuBarIcon: true
         )
 
-        func both(_ name: String, title: String, selection: String) {
+        func both(_ name: String, selection: String) {
             for dark in [false, true] {
                 snap(SettingsView(navigation: Navigation(selection: selection)).environment(store),
-                     name: "\(name)-\(dark ? "dark" : "light")", title: title, dark: dark, dir: dir)
+                     name: "\(name)-\(dark ? "dark" : "light")", dark: dark, dir: dir)
             }
         }
 
-        both("profile", title: store.activeProfile.name, selection: Profile.defaultProfileID.uuidString)
-        both("excluded-apps", title: "Excluded Apps", selection: SettingsView.Pane.excludedApps)
-        both("settings", title: "General", selection: SettingsView.Pane.general)
+        // The built-in profiles only, which the popover shows as a segmented control.
+        let popoverStore = SettingsStore(
+            profiles: Profile.presets,
+            activeProfileID: Profile.defaultProfileID,
+            excludedBundleIDs: store.excludedBundleIDs,
+            isEnabled: true,
+            showMenuBarIcon: true
+        )
+        for dark in [false, true] {
+            snapFitting(MenuContent(isAccessibilityTrusted: true, openSettings: {}, openExcludedApps: {},
+                                    checkForUpdates: {}, openBuyMeACoffee: {}).environment(popoverStore),
+                        name: "popover-\(dark ? "dark" : "light")", dark: dark, dir: dir)
+        }
+        both("profile", selection: Profile.defaultProfileID.uuidString)
+        both("profile-custom", selection: designWorkProfile.id.uuidString)
+        both("excluded-apps", selection: SettingsView.Pane.excludedApps)
+        both("settings", selection: SettingsView.Pane.general)
+        both("about", selection: SettingsView.Pane.about)
 
         print("Snapshots written to \(dir.path)")
         return 0
@@ -50,35 +67,46 @@ enum Snapshots {
 
     // MARK: Rendering
 
-    private static func snap(_ view: some View, name: String, title: String, dark: Bool, dir: URL) {
-        let controller = NSHostingController(rootView: view)
-        controller.sceneBridgingOptions = [.title, .toolbars]
+    /// Renders a view on a borderless window sized to fit its content, like the popover.
+    private static func snapFitting(_ view: some View, name: String, dark: Bool, dir: URL) {
+        // The popover's own glass comes from NSPopover, so it's painted in here.
+        let controller = NSHostingController(rootView: view.puiGlass(Rectangle()).partitiSnapshot())
         let window = NSWindow(contentViewController: controller)
-        window.title = title
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.toolbarStyle = .unified
+        window.styleMask = [.borderless]
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        window.setContentSize(NSSize(width: 820, height: 600))
+        window.setContentSize(controller.view.fittingSize)
+        capture(window, name: name, dir: dir)
+    }
+
+    private static func snap(_ view: some View, name: String, dark: Bool, dir: URL) {
+        let controller = NSHostingController(rootView: view.partitiSnapshot())
+        let window = NSWindow(contentViewController: controller)
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        window.setContentSize(PUI.Window.settings)
         // Off the visible displays, so nothing flashes on screen; the window server can
         // still composite and capture a window regardless of where it's positioned.
         window.setFrameOrigin(NSPoint(x: -6000, y: -6000))
         window.orderFrontRegardless()
-        RunLoop.main.run(until: Date().addingTimeInterval(0.8))
-        // Forms are List-backed, so `fittingSize` just echoes the current frame back
-        // instead of measuring content. Grow the window to the tallest scroll view's
-        // actual document height so long panes (e.g. the cursor style grid) aren't cropped.
+        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        // Panes scroll, so grow the window to the tallest scroll view's document height
+        // and long panes (e.g. the cursor style grid) aren't cropped.
         let contentHeight = tallestDocumentHeight(in: controller.view)
-        if contentHeight > 0 {
-            window.setContentSize(NSSize(width: 820, height: contentHeight + 40))
+        if contentHeight > PUI.Window.settings.height - 40 {
+            window.setContentSize(NSSize(width: PUI.Window.settings.width, height: min(contentHeight + 40, 1400)))
         }
-        RunLoop.main.run(until: Date().addingTimeInterval(0.4))
+        capture(window, name: name, dir: dir)
+    }
 
-        if let image = windowImage(window) {
-            let rep = NSBitmapImageRep(cgImage: image)
-            if let data = rep.representation(using: .png, properties: [:]) {
-                try? data.write(to: dir.appendingPathComponent("\(name).png"))
-                print("  \(name).png")
-            }
+    private static func capture(_ window: NSWindow, name: String, dir: URL) {
+        window.setFrameOrigin(NSPoint(x: -6000, y: -6000))
+        window.orderFrontRegardless()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.8))
+        if let image = windowImage(window), let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) {
+            try? data.write(to: dir.appendingPathComponent("\(name).png"))
+            print("  \(name).png")
         }
         window.orderOut(nil)
         window.close()
@@ -107,5 +135,12 @@ enum Snapshots {
         let fn = unsafeBitCast(sym, to: Fn.self)
         // kCGWindowListOptionIncludingWindow = 8, boundsIgnoreFraming = 1, bestResolution = 8
         return fn(.null, 8, UInt32(window.windowNumber), 1 | 8)?.takeRetainedValue()
+    }
+}
+
+private extension View {
+    /// Kiito's accent, with glass painted so snapshots match the running app.
+    func partitiSnapshot() -> some View {
+        puiAccent(KiitoStyle.accent).puiGlassRendering(.painted)
     }
 }
