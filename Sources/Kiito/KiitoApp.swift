@@ -119,8 +119,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let window = NSWindow(contentViewController: controller)
         window.title = "Kiito"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
+        window.puiConfigureForSettings()
         window.setContentSize(PUI.Window.settings)
         window.minSize = PUI.Window.settingsMin
         window.center()

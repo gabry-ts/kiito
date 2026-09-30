@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/gabry-ts/partiti-ui",
       "state" : {
-        "revision" : "942866162c606c2ddb8a51f88d57755d2de368ff",
-        "version" : "0.2.0"
+        "revision" : "b06b1f21d4976c03ee63b010dc4020f061c96ee3",
+        "version" : "0.3.1"
       }
     },
     {
