@@ -1,8 +1,11 @@
+import PartitiUI
 import SwiftUI
 
 struct ProfileEditorView: View {
     @Environment(SettingsStore.self) private var store
     let profileID: UUID
+    @State private var isRenaming = false
+    @State private var renameText = ""
 
     private var profile: Profile {
         store.profiles.first(where: { $0.id == profileID }) ?? store.profiles[0]
@@ -12,6 +15,10 @@ struct ProfileEditorView: View {
         Profile.presets.contains { $0.id == profile.id }
     }
 
+    private var isActive: Bool {
+        profile.id == store.activeProfileID
+    }
+
     private var settings: Binding<ScrollSettings> {
         Binding(
             get: { profile.settings },
@@ -19,106 +26,157 @@ struct ProfileEditorView: View {
         )
     }
 
-    private var axisModeCaption: String {
-        switch profile.settings.axisMode {
-        case .free: "Scroll in any direction, following every change of direction."
-        case .snap: "Scroll along one axis, switching when movement clearly turns to the other."
-        case .initial: "Scroll along the axis you start on until you release the button."
+    var body: some View {
+        let current = profile.settings
+        KiitoPane {
+            PaneHeader(Text(verbatim: profile.name),
+                       subtitle: isActive
+                           ? Text("Active profile. Hold the trigger button and move the mouse to scroll.")
+                           : Text("Use this profile to scroll with its settings."),
+                       symbol: "computermouse.fill", color: KiitoStyle.accent.color) {
+                headerActions
+            }
+        } content: {
+            SettingsGroup("Activation") {
+                SettingsRow("Trigger button") {
+                    PopUpMenu(current.trigger.title) {
+                        Picker("Trigger button", selection: settings.trigger) {
+                            ForEach(TriggerButton.allCases, id: \.self) { Text(verbatim: $0.title).tag($0) }
+                        }
+                        .pickerStyle(.inline)
+                        .labelsHidden()
+                    }
+                }
+                SettingsRow("Click threshold") {
+                    sliderControl(settings.threshold, range: ScrollSettings.thresholdRange, step: 1,
+                                  value: "\(Int(current.threshold)) px")
+                }
+                SettingsRow("Stay on", subtitle: "Click once to start scrolling, click again to stop.") {
+                    toggle("Stay on", settings.stayOn)
+                }
+            }
+
+            SettingsGroup("Scrolling") {
+                SettingsRow("Speed") {
+                    sliderControl(settings.speed, range: ScrollSettings.speedRange, step: 0.1, value: current.speedText)
+                }
+                SettingsRow("Acceleration") {
+                    toggle("Acceleration", settings.acceleration)
+                }
+                SettingsRow(Text("Axis"), subtitle: Text(verbatim: current.axisMode.caption)) {
+                    PopUpMenu(current.axisMode.title) {
+                        Picker("Axis", selection: settings.axisMode) {
+                            ForEach(AxisMode.allCases, id: \.self) { Text(verbatim: $0.title).tag($0) }
+                        }
+                        .pickerStyle(.inline)
+                        .labelsHidden()
+                    }
+                }
+                if current.axisMode == .snap {
+                    SettingsRow("Snap sensitivity") {
+                        sliderControl(settings.snapSensitivity, range: 0...1, step: 0.05,
+                                      value: "\(Int((current.snapSensitivity * 100).rounded()))%")
+                    }
+                }
+            }
+
+            SettingsGroup("Inertia") {
+                SettingsRow("Inertia") {
+                    toggle("Inertia", settings.inertia)
+                }
+                SettingsRow("Throw duration") {
+                    sliderControl(settings.throwDuration, range: ScrollSettings.throwDurationRange, step: 5,
+                                  value: "\(Int(current.throwDuration))")
+                }
+                .disabled(!current.inertia)
+            }
+
+            SettingsGroup("Direction") {
+                SettingsRow("Reverse vertical") {
+                    toggle("Reverse vertical", settings.reverseVertical)
+                }
+                SettingsRow("Reverse horizontal") {
+                    toggle("Reverse horizontal", settings.reverseHorizontal)
+                }
+            }
+
+            SettingsGroup("Cursor") {
+                CursorStylePicker(selection: settings.cursorStyle)
+                    .padding(PUI.Space.l)
+            }
+        }
+        .alert("Rename Profile", isPresented: $isRenaming) {
+            TextField("Name", text: $renameText)
+            Button("Cancel", role: .cancel) {}
+            Button("Rename") { store.rename(profileID, to: renameText) }
         }
     }
 
-    var body: some View {
-        Form {
-            Section("Activation") {
-                Picker("Trigger Button", selection: settings.trigger) {
-                    Text("Right Button").tag(TriggerButton.right)
-                    Text("Middle Button").tag(TriggerButton.middle)
-                    Text("Button 4").tag(TriggerButton.button4)
-                    Text("Button 5").tag(TriggerButton.button5)
-                }
-                LabeledContent("Click Threshold") {
-                    HStack {
-                        Slider(value: settings.threshold, in: 1...15, step: 1)
-                        Text("\(Int(profile.settings.threshold)) px")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                            .frame(width: 44, alignment: .trailing)
-                    }
-                }
-                Toggle("Stay On", isOn: settings.stayOn)
-                Text("Replaces the right click with a toggle: click once to start scrolling, click again to stop.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+    // MARK: Header
 
-            Section("Scrolling") {
-                LabeledContent("Speed") {
-                    HStack {
-                        Slider(value: settings.speed, in: 0.5...8, step: 0.1)
-                        Text(String(format: "%.1f", profile.settings.speed))
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                            .frame(width: 32, alignment: .trailing)
-                    }
-                }
-                Toggle("Acceleration", isOn: settings.acceleration)
-                Picker("Axis", selection: settings.axisMode) {
-                    Text("Free (360°)").tag(AxisMode.free)
-                    Text("Snap to Axis").tag(AxisMode.snap)
-                    Text("Lock to First Axis").tag(AxisMode.initial)
-                }
-                Text(axisModeCaption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if profile.settings.axisMode == .snap {
-                    LabeledContent("Snap Sensitivity") {
-                        HStack {
-                            Slider(value: settings.snapSensitivity, in: 0...1, step: 0.05)
-                            Text("\(Int((profile.settings.snapSensitivity * 100).rounded()))%")
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                                .frame(width: 44, alignment: .trailing)
-                        }
-                    }
-                }
+    private var headerActions: some View {
+        HStack(spacing: PUI.Space.s) {
+            if !isActive {
+                Button("Use This Profile") { store.select(profileID) }
+                    .buttonStyle(PrimaryButtonStyle(height: PUI.Control.small, fullWidth: false))
             }
-
-            Section("Inertia") {
-                Toggle("Inertia", isOn: settings.inertia)
-                LabeledContent("Throw Duration") {
-                    HStack {
-                        Slider(value: settings.throwDuration, in: ScrollSettings.throwDurationRange, step: 5)
-                        Text("\(Int(profile.settings.throwDuration))")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                            .frame(width: 32, alignment: .trailing)
+            Button("Reset to Defaults") { store.resetToPresetDefaults(profileID) }
+                .buttonStyle(SecondaryButtonStyle(height: PUI.Control.small))
+                .disabled(!isPreset)
+            ProfileActionsMenu {
+                Button("Duplicate") { store.duplicate(profileID) }
+                if !profile.isDefault {
+                    Button("Rename…") {
+                        renameText = profile.name
+                        isRenaming = true
                     }
+                    Divider()
+                    Button("Delete", role: .destructive) { store.delete(profileID) }
                 }
-                .disabled(!profile.settings.inertia)
-            }
-
-            Section("Direction") {
-                Toggle("Reverse Vertical", isOn: settings.reverseVertical)
-                Toggle("Reverse Horizontal", isOn: settings.reverseHorizontal)
-            }
-
-            Section("Cursor") {
-                CursorStylePicker(selection: settings.cursorStyle)
             }
         }
-        .formStyle(.grouped)
-        .navigationTitle(profile.name)
-        .navigationSubtitle(profile.id == store.activeProfileID ? "Active Profile" : "")
-        .toolbar {
-            if profile.id != store.activeProfileID {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Use This Profile") { store.select(profile.id) }
-                }
+        .fixedSize()
+    }
+
+    // MARK: Controls
+
+    private func toggle(_ title: LocalizedStringKey, _ isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .toggleStyle(PUISwitchStyle(showsLabel: false))
+    }
+
+    private func sliderControl(_ binding: Binding<Double>, range: ClosedRange<Double>, step: Double, value: String) -> some View {
+        HStack(spacing: PUI.Space.m) {
+            SteppedSlider(value: binding, range: range, step: step)
+                .frame(width: 180)
+            ValueText(value, width: 44)
+        }
+    }
+}
+
+/// The profile's less frequent actions, behind an ellipsis button next to the header's.
+private struct ProfileActionsMenu<Items: View>: View {
+    @ViewBuilder let items: () -> Items
+    @Environment(\.puiGlassRendering) private var rendering
+
+    var body: some View {
+        let label = Image(systemName: "ellipsis")
+        switch rendering {
+        case .live:
+            Menu {
+                items()
+            } label: {
+                label
             }
-            ToolbarItem(placement: .secondaryAction) {
-                Button("Reset to Defaults") { store.resetToPresetDefaults(profile.id) }
-                    .disabled(!isPreset)
-            }
+            .menuStyle(.button)
+            .buttonStyle(SecondaryButtonStyle(height: PUI.Control.small))
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("More")
+            .accessibilityLabel("More")
+        case .painted:
+            Button {} label: { label }
+                .buttonStyle(SecondaryButtonStyle(height: PUI.Control.small))
         }
     }
 }
@@ -126,7 +184,7 @@ struct ProfileEditorView: View {
 private struct CursorStylePicker: View {
     @Binding var selection: CursorStyle
 
-    private let options: [(style: CursorStyle, label: String)] = [
+    private let options: [(style: CursorStyle, label: LocalizedStringKey)] = [
         (.smoozeCircle, "Circle"),
         (.closedHand, "Hand"),
         (.systemMove, "Move"),
@@ -137,47 +195,65 @@ private struct CursorStylePicker: View {
         (.none, "None"),
     ]
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
+    private let columns = [GridItem(.adaptive(minimum: 52), spacing: PUI.Space.m)]
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 12) {
+        LazyVGrid(columns: columns, spacing: PUI.Space.m) {
             ForEach(options, id: \.style) { option in
-                tile(style: option.style, label: option.label)
+                CursorTile(style: option.style, label: option.label, selected: selection == option.style) {
+                    selection = option.style
+                }
             }
         }
-        .padding(.vertical, 4)
     }
+}
 
-    @ViewBuilder
-    private func tile(style: CursorStyle, label: String) -> some View {
-        let isSelected = selection == style
-        Button {
-            selection = style
-        } label: {
-            VStack(spacing: 6) {
+/// A cursor style tile: the cursor itself and its name, selection in the accent.
+private struct CursorTile: View {
+    let style: CursorStyle
+    let label: LocalizedStringKey
+    let selected: Bool
+    let action: () -> Void
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.puiAccent) private var accent
+
+    var body: some View {
+        let ink = Ink(scheme)
+        let shape = RoundedRectangle(cornerRadius: PUI.Radius.row, style: .continuous)
+        Button(action: action) {
+            VStack(spacing: PUI.Space.xs) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.quaternary)
-                        .aspectRatio(1, contentMode: .fit)
-                    if let image = CursorOverlay.previewImage(for: style) {
-                        Image(nsImage: image)
-                    } else {
-                        Image(systemName: "cursorarrow.slash")
-                            .foregroundStyle(.secondary)
-                    }
+                    shape.fill(ink.fill)
+                    preview(ink)
                 }
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2)
-                )
+                .frame(height: 44)
+                .overlay(shape.strokeBorder(selected ? accent.color : .clear, lineWidth: 2))
                 Text(label)
-                    .font(.caption)
-                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .font(PUI.Font.caption)
+                    .foregroundStyle(selected ? accent.legible(scheme) : ink.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
             .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    @ViewBuilder
+    private func preview(_ ink: Ink) -> some View {
+        if let image = CursorOverlay.previewImage(for: style) {
+            let side: CGFloat = 28
+            let scale = min(1, side / max(image.size.width, image.size.height, 1))
+            Image(nsImage: image)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: image.size.width * scale, height: image.size.height * scale)
+        } else {
+            Image(systemName: "nosign")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(ink.secondary)
+        }
     }
 }

@@ -1,3 +1,4 @@
+import PartitiUI
 import Sparkle
 import SwiftUI
 
@@ -31,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
     private let permissions = Permissions()
     private var settingsWindow: NSWindow?
+    private let navigation = Navigation()
     private var statusItem: StatusItemController?
 
     private static let hasLaunchedBeforeKey = "hasLaunchedBefore"
@@ -47,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     },
                     openExcludedApps: { [weak self] in
                         self?.statusItem?.closePopover()
-                        self?.openSettingsWindow()
+                        self?.openSettingsWindow(selecting: SettingsView.Pane.excludedApps)
                     },
                     checkForUpdates: { [weak self] in
                         self?.statusItem?.closePopover()
@@ -90,31 +92,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Brings settings to front when the app is reopened while already running, e.g. from the
     /// Dock, Spotlight or Finder. This works even when the menu bar icon is hidden, since the
-    /// window is created directly instead of relying on MenuBarExtra content being rendered.
+    /// window is created directly instead of from the popover.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         openSettingsWindow()
         return true
     }
 
-    func openSettingsWindow() {
+    /// Opens settings, on `selection` when given, reusing the window if it's already open.
+    func openSettingsWindow(selecting selection: String? = nil) {
         NSApp.activate()
+        if let selection {
+            navigation.selection = selection
+        }
         if let settingsWindow {
             settingsWindow.makeKeyAndOrderFront(nil)
             return
         }
 
         let controller = NSHostingController(
-            rootView: SettingsView()
+            rootView: SettingsView(navigation: navigation)
                 .environment(store)
                 .environment(\.updater, updaterController.updater)
         )
-        controller.sceneBridgingOptions = [.title, .toolbars]
+        // A full-size content view under a clear title bar, so Partiti UI's floating sidebar
+        // runs under the traffic lights and each pane carries its own header.
         let window = NSWindow(contentViewController: controller)
-        // SwiftUI only bridges the pane title after the first selection change.
-        window.title = store.activeProfile.name
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.setContentSize(NSSize(width: 820, height: 600))
-        window.minSize = NSSize(width: 720, height: 520)
+        window.title = "Kiito"
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.setContentSize(PUI.Window.settings)
+        window.minSize = PUI.Window.settingsMin
         window.center()
         window.isReleasedWhenClosed = false
         settingsWindow = window

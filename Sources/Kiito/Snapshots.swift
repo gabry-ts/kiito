@@ -20,16 +20,16 @@ enum Snapshots {
             showMenuBarIcon: true
         )
 
-        func both(_ name: String, title: String, selection: SettingsView.SidebarItem) {
+        func both(_ name: String, title: String, selection: String) {
             for dark in [false, true] {
-                snap(SettingsView(initialSelection: selection).environment(store),
+                snap(SettingsView(navigation: Navigation(selection: selection)).environment(store),
                      name: "\(name)-\(dark ? "dark" : "light")", title: title, dark: dark, dir: dir)
             }
         }
 
-        both("profile", title: store.activeProfile.name, selection: .profile(Profile.defaultProfileID))
-        both("excluded-apps", title: "Excluded Apps", selection: .excludedApps)
-        both("settings", title: "General", selection: .general)
+        both("profile", title: store.activeProfile.name, selection: Profile.defaultProfileID.uuidString)
+        both("excluded-apps", title: "Excluded Apps", selection: SettingsView.Pane.excludedApps)
+        both("settings", title: "General", selection: SettingsView.Pane.general)
 
         print("Snapshots written to \(dir.path)")
         return 0

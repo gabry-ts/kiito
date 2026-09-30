@@ -1,68 +1,67 @@
+import PartitiUI
 import SwiftUI
 import UniformTypeIdentifiers
 
 struct ExcludedAppsView: View {
     @Environment(SettingsStore.self) private var store
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        Form {
-            Section {
+        let ink = Ink(scheme)
+        KiitoPane {
+            PaneHeader("Excluded Apps", subtitle: "Apps where Kiito stays out of the way.",
+                       symbol: "xmark.app.fill", color: .red) {
+                Button("Add App…") { addApp() }
+                    .buttonStyle(SecondaryButtonStyle(height: PUI.Control.small))
+            }
+        } content: {
+            SettingsGroup("Apps", footer: "Apps added here keep their normal right click; Kiito won't respond to the trigger button.") {
                 if store.excludedBundleIDs.isEmpty {
                     Text("No excluded apps")
-                        .foregroundStyle(.secondary)
+                        .font(PUI.Font.body)
+                        .foregroundStyle(ink.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 38, alignment: .leading)
+                        .padding(.horizontal, PUI.Space.l)
                 } else {
                     ForEach(store.excludedBundleIDs, id: \.self) { bundleID in
-                        row(for: bundleID)
+                        row(for: bundleID, ink)
                     }
                 }
-            } header: {
-                Text("Excluded Apps")
-            } footer: {
-                Text("Apps added here keep their normal right click; Kiito won't respond to the trigger button.")
-            }
-        }
-        .formStyle(.grouped)
-        .navigationTitle("Excluded Apps")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Add App", systemImage: "plus") { addApp() }
-                    .help("Add App")
             }
         }
     }
 
-    private func row(for bundleID: String) -> some View {
-        HStack {
-            if let icon = icon(for: bundleID) {
+    /// A settings row with the app's icon in front, which `SettingsRow` has no slot for.
+    private func row(for bundleID: String, _ ink: Ink) -> some View {
+        HStack(spacing: PUI.Space.m) {
+            if let icon = ExcludedApp.icon(for: bundleID) {
                 Image(nsImage: icon)
                     .resizable()
                     .frame(width: 20, height: 20)
             }
-            Text(name(for: bundleID))
-            Spacer()
+            Text(verbatim: ExcludedApp.name(for: bundleID))
+                .font(PUI.Font.body)
+                .foregroundStyle(ink.primary)
+            Spacer(minLength: PUI.Space.l)
             Button {
                 store.removeExcludedApp(bundleID)
             } label: {
                 Image(systemName: "minus.circle.fill")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ink.secondary)
             }
             .buttonStyle(.plain)
+            .help("Remove")
+            .accessibilityLabel("Remove")
         }
+        .padding(.horizontal, PUI.Space.l)
+        .padding(.vertical, PUI.Space.m)
+        .frame(minHeight: 38)
+        .contentShape(Rectangle())
         .contextMenu {
             Button("Remove", role: .destructive) {
                 store.removeExcludedApp(bundleID)
             }
         }
-    }
-
-    private func icon(for bundleID: String) -> NSImage? {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
-        return NSWorkspace.shared.icon(forFile: url.path)
-    }
-
-    private func name(for bundleID: String) -> String {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return bundleID }
-        return FileManager.default.displayName(atPath: url.path)
     }
 
     private func addApp() {

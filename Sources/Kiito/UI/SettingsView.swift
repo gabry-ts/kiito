@@ -1,197 +1,179 @@
+import Observation
+import PartitiUI
 import Sparkle
 import SwiftUI
 
+/// Which page the settings window shows, so the popover can open it on a given page.
+@MainActor
+@Observable
+final class Navigation {
+    /// A profile's UUID string or one of the fixed pane ids; nil shows the active profile.
+    var selection: String?
+
+    init(selection: String? = nil) {
+        self.selection = selection
+    }
+}
+
+/// The settings window: profiles first, then the fixed panes, in Partiti UI's floating sidebar.
 struct SettingsView: View {
     @Environment(SettingsStore.self) private var store
-    @State private var selection: SidebarItem?
-    @State private var renamingProfileID: UUID?
-    @State private var renameText = ""
+    @Bindable var navigation: Navigation
 
-    enum SidebarItem: Hashable {
-        case profile(UUID)
-        case excludedApps
-        case general
-    }
-
-    init(initialSelection: SidebarItem? = nil) {
-        _selection = State(initialValue: initialSelection)
+    enum Pane {
+        static let addProfile = "addProfile"
+        static let excludedApps = "excludedApps"
+        static let general = "general"
+        static let about = "about"
     }
 
     var body: some View {
-        NavigationSplitView {
-            List(selection: $selection) {
-                Section("Profiles") {
-                    ForEach(store.profiles) { profile in
-                        profileRow(profile)
-                            .tag(SidebarItem.profile(profile.id))
-                    }
-                    Button {
-                        store.addProfile()
-                    } label: {
-                        Label("Add Profile", systemImage: "plus")
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                }
-                Section {
-                    Label("Excluded Apps", systemImage: "xmark.app")
-                        .tag(SidebarItem.excludedApps)
-                    Label("General", systemImage: "gearshape")
-                        .tag(SidebarItem.general)
-                }
-            }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 220)
-        } detail: {
-            detailView
+        SettingsWindow(sections: sections, selection: selection) {
+            paneView(selection.wrappedValue)
         }
-        .frame(minWidth: 720, minHeight: 520)
-        .alert("Rename Profile", isPresented: renameBinding) {
-            TextField("Name", text: $renameText)
-            Button("Cancel", role: .cancel) {}
-            Button("Rename") {
-                if let renamingProfileID {
-                    store.rename(renamingProfileID, to: renameText)
-                }
-            }
-        }
-        .onAppear {
-            if selection == nil {
-                selection = .profile(store.activeProfileID)
-            }
-        }
+        // The sidebar leaves room for the traffic lights itself, so it runs under the
+        // transparent title bar instead of below it.
+        .ignoresSafeArea(.container, edges: .top)
+        .frame(minWidth: PUI.Window.settingsMin.width, minHeight: PUI.Window.settingsMin.height)
+        .puiAccent(KiitoStyle.accent)
     }
 
-    private var renameBinding: Binding<Bool> {
+    private var sections: [SidebarSection] {
+        let profiles = store.profiles.map { profile in
+            SidebarItem(Text(verbatim: profile.name), id: profile.id.uuidString, symbol: "circle.circle",
+                        style: .plain, checked: profile.id == store.activeProfileID)
+        }
+        return [
+            SidebarSection("Profiles", profiles + [
+                SidebarItem("Add Profile", id: Pane.addProfile, symbol: "plus", style: .plain),
+            ]),
+            SidebarSection(nil, [
+                SidebarItem("Excluded Apps", id: Pane.excludedApps, symbol: "xmark.app.fill", style: .tile(.red)),
+                SidebarItem("General", id: Pane.general, symbol: "gearshape.fill", style: .tile(.gray)),
+                SidebarItem("About", id: Pane.about, symbol: "info", style: .tile(.teal)),
+            ]),
+        ]
+    }
+
+    /// Falls back to the active profile when nothing, or a deleted profile, is selected.
+    /// Add Profile is an action: it creates the profile and selects it.
+    private var selection: Binding<String> {
         Binding(
-            get: { renamingProfileID != nil },
-            set: { if !$0 { renamingProfileID = nil } }
-        )
-    }
-
-    @ViewBuilder
-    private var detailView: some View {
-        switch selection {
-        case .profile(let id):
-            if store.profiles.contains(where: { $0.id == id }) {
-                ProfileEditorView(profileID: id)
-                    .id(id)
-            } else {
-                ContentUnavailableView("No Profile Selected", systemImage: "slider.horizontal.3")
-            }
-        case .excludedApps:
-            ExcludedAppsView()
-        case .general:
-            GeneralView()
-        case nil:
-            ContentUnavailableView("Select a Profile", systemImage: "sidebar.left")
-        }
-    }
-
-    @ViewBuilder
-    private func profileRow(_ profile: Profile) -> some View {
-        HStack {
-            Text(profile.name)
-            Spacer()
-            if profile.id == store.activeProfileID {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.tint)
-            }
-        }
-        .contextMenu {
-            Button("Use This Profile") { store.select(profile.id) }
-            Button("Duplicate") { store.duplicate(profile.id) }
-            if !profile.isDefault {
-                Button("Rename…") {
-                    renameText = profile.name
-                    renamingProfileID = profile.id
+            get: {
+                if let id = navigation.selection, profile(for: id) != nil || [Pane.excludedApps, Pane.general, Pane.about].contains(id) {
+                    return id
                 }
-                Divider()
-                Button("Delete", role: .destructive) { store.delete(profile.id) }
+                return store.activeProfileID.uuidString
+            },
+            set: { id in
+                if id == Pane.addProfile {
+                    store.addProfile()
+                    navigation.selection = store.activeProfileID.uuidString
+                } else {
+                    navigation.selection = id
+                }
+            })
+    }
+
+    private func profile(for id: String) -> Profile? {
+        guard let uuid = UUID(uuidString: id) else { return nil }
+        return store.profiles.first { $0.id == uuid }
+    }
+
+    @ViewBuilder
+    private func paneView(_ id: String) -> some View {
+        switch id {
+        case Pane.excludedApps: ExcludedAppsView()
+        case Pane.general: GeneralView()
+        case Pane.about: AboutView()
+        default:
+            if let profile = profile(for: id) {
+                ProfileEditorView(profileID: profile.id)
+                    .id(profile.id)
             }
         }
     }
 }
 
+/// A scrolling settings pane opening with Partiti UI's header.
+struct KiitoPane<Header: View, Content: View>: View {
+    @ViewBuilder let header: Header
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        ScrollView {
+            SettingsPane {
+                header
+            } content: {
+                content
+            }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+    }
+}
+
 private struct GeneralView: View {
     @Environment(SettingsStore.self) private var store
-    @Environment(\.updater) private var updater
+    @Environment(\.colorScheme) private var scheme
     @State private var isAccessibilityTrusted = Permissions.isTrusted
     @State private var loginItemStatus = LoginItem.status
-    @State private var automaticallyChecksForUpdates = false
 
     var body: some View {
         @Bindable var store = store
-        Form {
-            Section("Kiito") {
-                Toggle("Enabled", isOn: $store.isEnabled)
-                Toggle("Show Icon in Menu Bar", isOn: $store.showMenuBarIcon)
-                Text("Relaunch Kiito from Spotlight or Finder to reopen settings when hidden.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        let ink = Ink(scheme)
+        KiitoPane {
+            PaneHeader("General", subtitle: "Menu bar icon, startup and permissions.",
+                       symbol: "gearshape.fill", color: .gray)
+        } content: {
+            SettingsGroup("Kiito", footer: "Relaunch Kiito from Spotlight or Finder to reopen settings when the icon is hidden.") {
+                SettingsRow("Enabled") {
+                    Toggle("Enabled", isOn: $store.isEnabled)
+                        .toggleStyle(PUISwitchStyle(showsLabel: false))
+                }
+                SettingsRow("Show icon in menu bar") {
+                    Toggle("Show icon in menu bar", isOn: $store.showMenuBarIcon)
+                        .toggleStyle(PUISwitchStyle(showsLabel: false))
+                }
+                SettingsRow("Quit Kiito") {
+                    Button("Quit") { NSApp.terminate(nil) }
+                        .buttonStyle(SecondaryButtonStyle(height: PUI.Control.small))
+                }
             }
-            Section("Startup") {
-                Toggle("Launch at Login", isOn: launchAtLoginBinding)
-                if loginItemStatus == .requiresApproval {
-                    HStack {
-                        Text("Approval needed in Login Items settings.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Button("Open Login Items") { LoginItem.openSystemSettings() }
+            SettingsGroup("Startup") {
+                SettingsRow(Text("Launch at login"),
+                            subtitle: loginItemStatus == .requiresApproval ? Text("Approval needed in Login Items settings.") : nil) {
+                    HStack(spacing: PUI.Space.m) {
+                        if loginItemStatus == .requiresApproval {
+                            Button("Open Login Items") { LoginItem.openSystemSettings() }
+                                .buttonStyle(SecondaryButtonStyle(height: PUI.Control.small))
+                        }
+                        Toggle("Launch at login", isOn: launchAtLoginBinding)
+                            .toggleStyle(PUISwitchStyle(showsLabel: false))
                     }
                 }
             }
-            Section("Accessibility") {
-                LabeledContent("Status") {
-                    HStack {
+            SettingsGroup("Accessibility", footer: "Kiito needs Accessibility access to read the trigger button and scroll for you.") {
+                SettingsRow("Status") {
+                    HStack(spacing: PUI.Space.xs) {
                         Image(systemName: isAccessibilityTrusted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                            .foregroundStyle(isAccessibilityTrusted ? .green : .orange)
+                            .foregroundStyle(isAccessibilityTrusted ? ink.green : ink.orange)
                         Text(isAccessibilityTrusted ? "Granted" : "Not Granted")
+                            .font(PUI.Font.body)
+                            .foregroundStyle(ink.secondary)
                     }
                 }
                 if !isAccessibilityTrusted {
-                    Button("Open System Settings") {
-                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                            NSWorkspace.shared.open(url)
-                        }
+                    SettingsRow("Allow Kiito in Privacy & Security") {
+                        Button("Open System Settings") { Permissions.openSystemSettings() }
+                            .buttonStyle(SecondaryButtonStyle(height: PUI.Control.small))
                     }
                 }
-            }
-            Section("Updates") {
-                Toggle("Automatically Check for Updates", isOn: automaticUpdatesBinding)
-                Button("Check for Updates…") { updater?.checkForUpdates() }
-            }
-            Section("About") {
-                LabeledContent("Version", value: versionString)
-                Button("Buy Me a Coffee…") { BuyMeACoffee.open() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)
-        .navigationTitle("General")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Quit Kiito", systemImage: "power") { NSApp.terminate(nil) }
-                    .help("Quit Kiito")
             }
         }
         .onAppear {
             isAccessibilityTrusted = Permissions.isTrusted
             loginItemStatus = LoginItem.status
-            automaticallyChecksForUpdates = updater?.automaticallyChecksForUpdates ?? false
         }
-    }
-
-    private var automaticUpdatesBinding: Binding<Bool> {
-        Binding(
-            get: { automaticallyChecksForUpdates },
-            set: { newValue in
-                automaticallyChecksForUpdates = newValue
-                updater?.automaticallyChecksForUpdates = newValue
-            }
-        )
     }
 
     private var launchAtLoginBinding: Binding<Bool> {
@@ -206,6 +188,40 @@ private struct GeneralView: View {
                 loginItemStatus = LoginItem.status
             }
         )
+    }
+}
+
+private struct AboutView: View {
+    @Environment(\.updater) private var updater
+    @State private var automaticallyChecksForUpdates = false
+
+    var body: some View {
+        ScrollView {
+            AboutPane(
+                brand: PartitiBrand(
+                    accent: KiitoStyle.accent,
+                    tagline: "Trackball scrolling for any mouse",
+                    coffeeLine: "Kiito is free. If it makes scrolling a little nicer, you can buy me a coffee.",
+                    icon: KiitoStyle.icon),
+                version: "Version \(versionString)",
+                checksAutomatically: $automaticallyChecksForUpdates,
+                onCheckForUpdates: { updater?.checkForUpdates() },
+                onBuyMeACoffee: { BuyMeACoffee.open() })
+                .padding(.top, 44)
+                .padding(.horizontal, PUI.Space.xxl)
+                .padding(.bottom, PUI.Space.xxl)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .onAppear {
+            automaticallyChecksForUpdates = updater?.automaticallyChecksForUpdates ?? false
+        }
+        .onChange(of: automaticallyChecksForUpdates) { _, enabled in
+            // Written only on a real change, so opening About never answers Sparkle's
+            // own question about automatic checks.
+            if let updater, updater.automaticallyChecksForUpdates != enabled {
+                updater.automaticallyChecksForUpdates = enabled
+            }
+        }
     }
 
     private var versionString: String {
