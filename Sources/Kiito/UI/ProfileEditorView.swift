@@ -32,7 +32,7 @@ struct ProfileEditorView: View {
             PaneHeader(Text(verbatim: profile.name),
                        subtitle: isActive
                            ? Text("Active profile. Hold the trigger button and move the mouse to scroll.")
-                           : Text("Use this profile to scroll with its settings."),
+                           : Text("Not in use."),
                        symbol: "computermouse.fill", color: KiitoStyle.accent.color) {
                 headerActions
             }
@@ -195,7 +195,8 @@ private struct CursorStylePicker: View {
         (.none, "None"),
     ]
 
-    private let columns = [GridItem(.adaptive(minimum: 52), spacing: PUI.Space.m)]
+    /// One row of eight, as the pane's width allows.
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: PUI.Space.m), count: 8)
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: PUI.Space.m) {
