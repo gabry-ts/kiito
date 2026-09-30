@@ -35,12 +35,14 @@ if ! otool -l "$APP/Contents/MacOS/Kiito" | grep -q "@executable_path/../Framewo
     install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/Kiito"
 fi
 
-# Sign inside-out, without --deep, so every nested binary gets its own hardened-runtime
-# signature: Sparkle's XPC services, Autoupdate and Updater.app, then the framework
-# itself, then the app.
-CODESIGN_FLAGS=(--force --options runtime)
+# Sign inside-out, without --deep, so every nested binary gets its own signature: Sparkle's
+# XPC services, Autoupdate and Updater.app, then the framework itself, then the app.
+# Ad-hoc identities (KIITO_SIGN_IDENTITY=-, for local builds without a Developer ID cert)
+# can't carry a secure timestamp, and under the hardened runtime their missing Team ID makes
+# library validation reject the embedded Sparkle.framework at launch.
+CODESIGN_FLAGS=(--force)
 if [[ "$SIGN_IDENTITY" != "-" ]]; then
-    CODESIGN_FLAGS+=(--timestamp)
+    CODESIGN_FLAGS+=(--options runtime --timestamp)
 fi
 
 SPARKLE_FRAMEWORK="$FRAMEWORKS/Sparkle.framework"
